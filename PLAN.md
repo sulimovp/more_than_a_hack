@@ -3,8 +3,9 @@
 Written 2026-10-21. Built on the challenge docs, the Cursor plan (`~/.cursor/projects/.../canvases/possession-pipeline.canvas.tsx`),
 measurements on the tactical data (`analysis/`), and a literature review (section 7).
 
-**Status (22 Oct):** stages S0–S7 are built in `possession/`; public spellF1 0.509 against the
-floor's 0.326. How to run it, current numbers and what is left: [PIPELINE.md](PIPELINE.md).
+**Status (24 Oct):** stages S0–S7 are built in `possession/`, including the S3 touch latch.
+Public spellF1 0.506 against the floor's 0.326, macroF1 0.888. How to run it, current numbers
+and what is left: [PIPELINE.md](PIPELINE.md).
 
 Deadlines: same team name for every member by **10 Nov**, submission instructions **14 Nov**, upload by
 **17 Nov 23:59 CET**. Top 20 advance. There is no leaderboard and no feedback before then.

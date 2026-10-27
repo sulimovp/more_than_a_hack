@@ -1,7 +1,7 @@
 # Possession pipeline: how to run it, and where it stands
 
 The design and its reasoning are in [PLAN.md](PLAN.md); the change-by-change record is in
-[experiments.md](experiments.md).
+[experiments.md](experiments.md); the submission note is [TECHNICAL.md](TECHNICAL.md).
 
 ## Run it
 
@@ -27,28 +27,30 @@ pipeline on purpose, regenerate the file and update that hash in the same commit
 | S1 | `ball.py` | ball track | stuck and teleport detections removed, dropouts under 1 s filled, Savitzky-Golay velocity and acceleration, out-of-pitch with line |
 | S2a | `audio.py` | the video's audio | narrow-band 2.5-4.5 kHz whistle score per frame |
 | S2 | `liveness.py` | S1, players, S2a, tags | log-odds that the ball is in play; bonuses for entering a stoppage (whistle, ball out, ball vanishes) and leaving one (strike past 5 m/s, ball reappears) |
-| S3 | `control.py` | S1, players | H-vs-A log-odds from the nearest player of each team, gated by player-ball co-movement |
+| S3 | `control.py` | S1, players | H-vs-A log-odds from the 1.5 m zone, plus the last touch held until the next one |
 | S5 | `restarts.py` | S2, tags | restarting team: kickoff laws, tagged set pieces, otherwise the taker |
 | S4 | `shape.py` | players, first-pass labels | H-vs-A from team shape in ball gaps; LightGBM trained on self-labelled frames of the other half |
 | S6 | `decoder.py` | all of the above | Viterbi over H/A/D per half, minimum spell 8 frames, minimum stoppage 50 frames |
 | S7 | `make_submission.py` | S6 | the CSV, X outside the graded halves, D before the second-half kickoff |
 
-## Where it stands (22 Oct)
+## Where it stands (24 Oct)
 
 | | public spellF1 | public macroF1 | possessions |
 |---|---|---|---|
-| this pipeline | **0.509** (bootstrap 5-95%: 0.35-0.67) | **0.862** | 16 vs 17 true |
+| this pipeline | **0.506** | **0.888** | 17 vs 17 true |
 | `baseline_smooth50` (published floor) | 0.326 | 0.621 | 26 |
 | `baseline_smooth125` | 0.424 | 0.581 | 16 |
 
-Full match: 278 possessions, 125 stoppages, 53.6% of graded time dead, 80.7% agreement with
-the Smart Tagging possession phases, 56 of 62 set pieces and goals followed by a restart.
+Full match: 313 possessions, 118 stoppages, 49.5% of graded time dead, 81.5% agreement with
+the Smart Tagging possession phases, 57 of 62 set pieces and goals followed by a restart.
+The 22 Oct bootstrap on the previous file was 0.35–0.67; public spellF1 has not moved, so that
+band still applies.
 
 **Public numbers check the pipeline, they do not rank versions of it.** None of the constants were
 fitted to the public window; four structural changes were made after reading its failures, each
 for a reason that holds on the full match too (see experiments.md).
 
-Robustness ([analysis/sensitivity.md](analysis/sensitivity.md), each constant halved and doubled):
+Robustness on the 22 Oct file, before the touch latch ([analysis/sensitivity.md](analysis/sensitivity.md); re-run the script for the current one). Each constant was halved and doubled:
 - **Plateau:** the dead-ball transition costs, both minimum durations, the gap speed pivot and the
   whistle bonus move public spellF1 by under 0.04.
 - **Slope, needs labelled windows:** `liveness.SPEED_PIVOT` (1.4 gives 0.40), `ACTIVITY_GAIN`
@@ -70,8 +72,11 @@ Robustness ([analysis/sensitivity.md](analysis/sensitivity.md), each constant ha
 2. **How much visible-ball time is dead.** The pipeline calls 16.6 of the 62 visible-ball minutes
    dead. The public window suggests the share is lower. The labelled windows settle it; the
    relevant constants are `liveness.VISIBLE_CLIP`, `SPEED_PIVOT` and `ACTIVITY_GAIN`.
-3. **Short duel spells** (0.76 s and 1.32 s in public) are still missed. Whether to chase them
-   depends on how often they occur in labelled play.
+3. **Short spells where the nearer player is the wrong team.** Five public possessions are still
+   misses (8.1 s, 2.8 s, 0.8 s, 1.3 s, 3.5 s). On those frames the true team is never at the ball,
+   or only while the ball is moving past at 7–10 m/s. Two further control rules (a flight-only
+   latch, a looser dribble gate) were run and not kept: possessions rose and the misses stayed.
+   This is the ceiling of the automatic track. Labelled windows say whether it is common.
 4. **Restart timing**: the dead-to-live transition lands within about 25 frames of a strike or
    reappearance; the labelled windows will say whether a fixed lag beats the current window.
 5. Optional, only if labelled errors point there: PathCRF emissions in live gaps, a WASB ball

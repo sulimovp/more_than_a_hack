@@ -28,6 +28,13 @@ GAP_SETPIECE = -1.0         # a set piece tagged inside the gap or just after it
 OOB_LOGODDS = -4.0
 SETPIECE_AFTER = 10 * FPS
 
+# A moving ball is still in play when the players have already slowed down. The bonus is
+# capped so a one-second kick inside a real stoppage cannot pay for leaving and re-entering it.
+BALL_PIVOT = 5.0            # m/s
+BALL_GAIN = 0.4
+BALL_CLIP = 0.6
+BALL_WINDOW = FPS
+
 WHISTLE_DB = 13.0           # about the 99th percentile of the graded score
 WHISTLE_BONUS = 4.0
 WHISTLE_LOOKBACK = int(1.5 * FPS)
@@ -115,6 +122,10 @@ def evidence(b, players, whistle, tags):
         if setpiece:
             score += GAP_SETPIECE
         alive[start:stop] = score
+    ball_speed = uniform_filter1d(np.nan_to_num(b["speed"], nan=0.0), BALL_WINDOW)
+    moving = np.clip(BALL_GAIN * (ball_speed - BALL_PIVOT), 0.0, BALL_CLIP)
+    moving[~visible | b["oob"]] = 0.0
+    alive = alive + moving
     pending = pending_restart(b, strikes)
     alive[pending] = np.minimum(alive[pending], PENDING_LOGODDS)
     alive[b["oob"]] = OOB_LOGODDS
