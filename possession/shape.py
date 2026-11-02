@@ -23,6 +23,8 @@ LABEL_MAX_REL = 3.0
 # rather than overruling continuity.
 GAIN = 0.05
 SEED = 7
+QUANTUM = 0.02      # P(home) is rounded to this before it enters the decoder, so a last-bit
+                    # difference in LightGBM across machines cannot change the submission
 
 
 def _team_features(xy, vxy, forward):
@@ -95,7 +97,7 @@ def evidence(b, players, team, live_codes):
     X = features(players, team)
     y = labels(b, players, team, live_codes)
     p, report = fit_predict(X, y)
-    p = np.clip(np.nan_to_num(p, nan=0.5), 1e-3, 1 - 1e-3)
+    p = np.clip(np.round(np.nan_to_num(p, nan=0.5) / QUANTUM) * QUANTUM, 1e-3, 1 - 1e-3)
     score = GAIN * np.log(p / (1 - p))
     score[b["visible"]] = 0.0
     return score, p, report

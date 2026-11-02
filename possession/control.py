@@ -92,6 +92,10 @@ def _direction_change(vel, speed):
     turn = np.zeros(len(vel))
     turn[1:] = np.degrees(np.arccos(cos))
     turn[np.nan_to_num(speed, nan=0.0) < FLIGHT_MPS * 0.6] = 0.0
+    # both frames must carry a velocity: against a missing (zero) neighbour the angle is 90
+    # degrees, which used to mark a touch at the first frame of every visible run
+    has = ~np.isnan(vel[:, 0])
+    turn[1:][~(has[1:] & has[:-1])] = 0.0
     return turn
 
 

@@ -33,7 +33,7 @@ pipeline on purpose, regenerate the file and update that hash in the same commit
 | S6 | `decoder.py` | all of the above | Viterbi over H/A/D per half, minimum spell 8 frames, minimum stoppage 50 frames |
 | S7 | `make_submission.py` | S6 | the CSV, X outside the graded halves, D before the second-half kickoff |
 
-## Where it stands (24 Oct)
+## Where it stands (2 Nov)
 
 | | public spellF1 | public macroF1 | possessions |
 |---|---|---|---|
@@ -41,7 +41,7 @@ pipeline on purpose, regenerate the file and update that hash in the same commit
 | `baseline_smooth50` (published floor) | 0.326 | 0.621 | 26 |
 | `baseline_smooth125` | 0.424 | 0.581 | 16 |
 
-Full match: 313 possessions, 118 stoppages, 49.5% of graded time dead, 81.5% agreement with
+Full match: 313 possessions, 117 stoppages, 49.4% of graded time dead, 81.6% agreement with
 the Smart Tagging possession phases, 57 of 62 set pieces and goals followed by a restart.
 The 22 Oct bootstrap on the previous file was 0.35–0.67; public spellF1 has not moved, so that
 band still applies.
@@ -64,6 +64,10 @@ Robustness on the 22 Oct file, before the touch latch ([analysis/sensitivity.md]
   kept as a hook for a learned liveness model.
 
 ## What is left, in order of expected value
+
+**Read [ROADMAP.md](ROADMAP.md) first.** The 2 Nov review found that about a third of the public
+ground truth's team switches are not where the automatic ball track puts the nearest player, and
+it lists the experiments in order, each with a script and an acceptance rule.
 
 1. **Hand-labelled validation windows** (PLAN.md 5.2). Without them nothing here can be tuned
    honestly. `tools/label_tool.py` is ready: labellers calibrate on the public window first

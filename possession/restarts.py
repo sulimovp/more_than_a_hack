@@ -4,8 +4,10 @@ Sources, strongest first:
   - kickoffs, from the laws: the second half is kicked off by the side that did not kick off the
     first, and after a goal the conceding side kicks off (Smart Tagging GOALS names the scorer);
   - Smart Tagging set pieces with a team (corners, goal kicks, free kicks);
-  - otherwise (every throw-in is tagged N/A) the team of the player nearest the ball when it is
-    struck or reappears, who is the taker.
+  - otherwise (every throw-in is tagged N/A) the team of the player standing over the still ball
+    in the seconds before the strike (right on all 5 tagged set pieces where it answers), and
+    failing that the player nearest the ball when it is struck or reappears (right on 14 of 21
+    tagged set pieces: at a corner the ball is often first seen in the box, among defenders).
 Values are applied over the same window as the dead -> live bonus (liveness.RESTART_LAG).
 """
 
@@ -23,6 +25,9 @@ TAG_LOGODDS = 4.0
 KICKOFF_LOGODDS = 6.0
 TAKER_LOGODDS = 2.0
 TAKER_MAX_M = 2.0
+HOLDER_LOOKBACK = 5 * FPS   # a still ball with a player over it in the seconds before the strike
+HOLDER_STILL_MPS = 1.5
+HOLDER_MAX_M = 2.0
 SIGN = {HOME: 1.0, AWAY: -1.0}
 
 
@@ -36,6 +41,20 @@ def first_kickoff_team(gt_first_label=AWAY):
     """Who kicked off the first half. Read off the video (Athletic, frame 11185); the public
     ground truth's first label agrees. The second half goes to the other side."""
     return gt_first_label
+
+
+def holder(b, s):
+    """Team of the player at a near-still visible ball in the seconds before frame s, or None."""
+    lo = max(s - HOLDER_LOOKBACK, 0)
+    hi = min(s + 10, N_FRAMES)
+    still = np.nan_to_num(b["speed"][lo:hi], nan=np.inf) < HOLDER_STILL_MPS
+    d_home, d_away = b["d_home"][lo:hi], b["d_away"][lo:hi]
+    ok = b["visible"][lo:hi] & still & (np.fmin(d_home, d_away) < HOLDER_MAX_M)
+    idx = np.flatnonzero(ok)
+    if not len(idx):
+        return None
+    last = idx[idx >= idx[-1] - FPS]       # the last second of holding frames
+    return HOME if np.mean(d_home[last] < d_away[last]) >= 0.5 else AWAY
 
 
 def evidence(live, b, tags):
@@ -66,6 +85,10 @@ def evidence(live, b, tags):
             if near:
                 value = TAG_LOGODDS * SIGN[TEAM[near[-1]["tags"]["Team"]]]
         # the taker
+        if value == 0.0:
+            side = holder(b, s)
+            if side is not None:
+                value = TAKER_LOGODDS * SIGN[side]
         if value == 0.0:
             window = slice(s, min(s + RESTART_LAG, N_FRAMES))
             d_home = np.nanmin(np.append(b["d_home"][window], np.inf))

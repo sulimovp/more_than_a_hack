@@ -13,7 +13,7 @@ before looking at the public window; PLAN.md section 5 says how they may be retu
 """
 
 import numpy as np
-from scipy.ndimage import maximum_filter1d, uniform_filter1d
+from scipy.ndimage import uniform_filter1d
 
 from . import ball as ballmod
 from .io import FPS
@@ -132,7 +132,9 @@ def evidence(b, players, whistle, tags):
 
     enter = np.zeros(n)
     loud = np.nan_to_num(whistle, nan=0.0) > WHISTLE_DB
-    recent_whistle = maximum_filter1d(loud.astype(float), WHISTLE_LOOKBACK + 1, origin=-(WHISTLE_LOOKBACK // 2))
+    # a whistle in the last WHISTLE_LOOKBACK frames (the peaks sit 0-1.4 s before a stoppage onset)
+    counts = np.concatenate(([0.0], np.cumsum(loud)))
+    recent_whistle = (counts[1:] - counts[np.maximum(np.arange(n) - WHISTLE_LOOKBACK, 0)]) > 0
     enter += WHISTLE_BONUS * recent_whistle
     oob_on = np.flatnonzero(np.diff(b["oob"].astype(np.int8)) == 1) + 1
     enter[oob_on] += OOB_ONSET_BONUS

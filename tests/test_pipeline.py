@@ -123,3 +123,23 @@ def test_submission_reproduces_byte_for_byte(tmp_path):
     with open(EXPECTED_HASH) as handle:
         expected = handle.read().split()[0]
     assert make_submission.sha256(str(out)) == expected
+
+
+def test_direction_change_has_no_edge_artefact():
+    vel = np.full((10, 2), np.nan)
+    vel[3:8] = (6.0, 0.0)                              # a visible run entered at frame 3
+    turn = control._direction_change(vel, np.linalg.norm(np.nan_to_num(vel), axis=1))
+    assert turn[3] == 0.0 and turn[8] == 0.0           # no 90-degree turn against a missing frame
+    vel[6] = (0.0, 6.0)
+    turn = control._direction_change(vel, np.linalg.norm(np.nan_to_num(vel), axis=1))
+    assert turn[6] > 80.0                              # a real turn still registers
+
+
+def test_restart_holder_is_the_player_over_the_still_ball():
+    from possession import restarts
+    n = 200
+    track = {"speed": np.full(n, 0.2), "visible": np.ones(n, dtype=bool),
+             "d_home": np.full(n, 0.8), "d_away": np.full(n, 6.0)}
+    assert restarts.holder(track, 150) == io.HOME
+    track["speed"][:] = 9.0                           # ball never still: no answer
+    assert restarts.holder(track, 150) is None

@@ -28,12 +28,14 @@ Four per-frame signals are combined by Viterbi:
   the zone contributes nothing.
 - **Restarts.** At a dead-to-live transition the restarting team is taken from the laws and from
   Smart Tagging: the first-half kickoff, the opposite team after the break and after a goal, the
-  tagged team for a corner, goal kick or free kick, and otherwise the player nearest the ball when
+  tagged team for a corner, goal kick or free kick, and otherwise the player standing over the
+  still ball in the seconds before it is struck, or failing that the player nearest the ball when
   it is struck. Every throw-in is tagged without a team, so those fall through to the taker.
 - **Team shape.** Where the ball is missing during a live phase, a gradient-boosted model gives a
   weak team score from the two teams' positions and velocities, oriented by attack direction. It is
   trained on frames where a player is at the ball, each half predicted by a model fit on the other
-  half. The weight is small (a confident five-second gap is not enough to pay for two switches), so
+  half, and its probability is rounded to 0.02 so that a last-bit difference between machines
+  cannot change the file. The weight is small (a confident five-second gap is not enough to pay for two switches), so
   shape only settles a handover the geometry left open.
 
 The chain forces a live spell to last at least 8 frames (0.3 s) and a stoppage at least 50 frames

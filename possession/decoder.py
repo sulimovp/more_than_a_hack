@@ -28,9 +28,19 @@ FORCED = -1e4
 
 def viterbi(alive, team, enter_dead, leave_dead, restart_team, force_dead,
             min_live=MIN_LIVE, min_dead=MIN_DEAD, switch=SWITCH,
-            live_to_dead=LIVE_TO_DEAD, dead_to_live=DEAD_TO_LIVE):
-    """Codes 0 (H), 1 (A), 2 (D) for every frame of one contiguous block."""
+            live_to_dead=LIVE_TO_DEAD, dead_to_live=DEAD_TO_LIVE,
+            switch_bonus=None, normalise_team=False):
+    """Codes 0 (H), 1 (A), 2 (D) for every frame of one contiguous block.
+
+    switch_bonus[t] is added to every transition cost into frame t (a change of label is more
+    likely here). normalise_team keeps the team evidence from biasing live against dead: the
+    favoured team's emission is log P(alive) exactly and the other team pays |team|. Without it
+    H and A each carry log P(H | alive), which for neutral evidence is log 1/2 per frame
+    against D, so a live stretch with no team evidence paid 0.69 nats per frame for being live.
+    """
     n = len(alive)
+    if switch_bonus is None:
+        switch_bonus = np.zeros(n)
     k, m = min_live, min_dead
     H0, A0, D0 = 0, k, 2 * k
     Ht, At, Dt = k - 1, 2 * k - 1, 2 * k + m - 1
@@ -40,8 +50,12 @@ def viterbi(alive, team, enter_dead, leave_dead, restart_team, force_dead,
     # P(H) = P(alive) P(H | alive): team evidence separates H from A but never makes a stoppage
     # look live, which is what a goalkeeper standing over a dead ball would otherwise do.
     e_live = -np.logaddexp(0.0, -alive)
-    e_h = e_live - np.logaddexp(0.0, -team)
-    e_a = e_live - np.logaddexp(0.0, team)
+    if normalise_team:
+        e_h = e_live + np.minimum(0.0, team)
+        e_a = e_live + np.minimum(0.0, -team)
+    else:
+        e_h = e_live - np.logaddexp(0.0, -team)
+        e_a = e_live - np.logaddexp(0.0, team)
     e_d = -np.logaddexp(0.0, alive)
     e_h = np.where(force_dead, FORCED, e_h)
     e_a = np.where(force_dead, FORCED, e_a)
@@ -63,13 +77,14 @@ def viterbi(alive, team, enter_dead, leave_dead, restart_team, force_dead,
                 new[tail] = dp[tail]
                 bp[tail] = tail
         # entries
-        into_live = dead_to_live + leave_dead[t]
+        bonus = switch_bonus[t]
+        into_live = dead_to_live + leave_dead[t] + bonus
         r = 0.5 * restart_team[t]
-        cand = ((dp[At] + switch, At), (dp[Dt] + into_live + r, Dt))
+        cand = ((dp[At] + switch + bonus, At), (dp[Dt] + into_live + r, Dt))
         new[H0], bp[H0] = max(cand)
-        cand = ((dp[Ht] + switch, Ht), (dp[Dt] + into_live - r, Dt))
+        cand = ((dp[Ht] + switch + bonus, Ht), (dp[Dt] + into_live - r, Dt))
         new[A0], bp[A0] = max(cand)
-        into_dead = live_to_dead + enter_dead[t]
+        into_dead = live_to_dead + enter_dead[t] + bonus
         cand = ((dp[Ht] + into_dead, Ht), (dp[At] + into_dead, At))
         new[D0], bp[D0] = max(cand)
 
