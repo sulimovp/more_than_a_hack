@@ -12,6 +12,10 @@ Two signals, as in PLAN.md S3:
     or the ball staying at a player's feet). The toucher's team is held from that frame until
     the next touch, which is what carries a pass while the ball is in the air.
 
+A touch counts only as the new team's first controlled action (analysis/gt_convention.md): a touch
+followed within CONFIRM_FRAMES by the other team's touch is a block, a deflection or a lost challenge
+and is dropped, so the latch never flips for it.
+
 A ball faster than 8 m/s with nobody within 2 m contributes no zone evidence. Relative speed
 above 8 m/s is a deflection, not a touch. On the public window the nearest player's team matches
 the truth 90% of the time when their relative speed is under 5 m/s, and 58% above 8 m/s.
@@ -37,6 +41,7 @@ FLIGHT_MPS = 8.0
 FLIGHT_CLEAR_M = 2.0
 LATCH_WEIGHT = 0.5          # zone is -1..1; the latch is weaker, so a new touch can replace it
 DUEL_WEIGHT = 0.35
+CONFIRM_FRAMES = 50         # 2 s; public scores flat for 44-62 (experiments.md, 3 Nov E5)
 
 
 def player_velocities(players):
@@ -138,7 +143,16 @@ def touch_events(b, dist, rel):
         kept_f.append(frame)
         kept_s.append(side)
         last = frame
-    return np.asarray(kept_f, dtype=int), np.asarray(kept_s, dtype=int)
+    return confirmed(np.asarray(kept_f, dtype=int), np.asarray(kept_s, dtype=int))
+
+
+def confirmed(frames, sides, window=CONFIRM_FRAMES):
+    """Drop a touch when the next one, within window frames, is by the other team."""
+    if window == 0 or len(frames) < 2:
+        return frames, sides
+    keep = np.ones(len(frames), dtype=bool)
+    keep[:-1] = ~((sides[1:] != sides[:-1]) & (np.diff(frames) <= window))
+    return frames[keep], sides[keep]
 
 
 def latch_signal(n, frames, sides, blocks):

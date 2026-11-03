@@ -115,6 +115,9 @@ live>D 115, D>live 115); it needs people to watch the clips (about 45 min of vid
 the precision numbers are still open. E2: done, `analysis/gt_convention.md`. b (touch-then-action) is the largest
 class; a new tracking defect (keeper slots on the wrong keeper, 1,324 ball-near graded frames) goes first as E4b.
 **Order now: E1 labelling (team, in parallel), E5 with the "first controlled action" rule, E3, E6, E7.**
+E5 rule part done 3 Nov (`control.confirmed`, 2 s): public spellF1 0.520 to 0.571, macroF1 0.915 to 0.919, possessions
+293 to 271 (experiments.md). E5 steps 1-2 below (posteriors, minimum-risk spell removal) wait for the E1 labels, which
+also have to confirm the 2 s window. **Order now: E1 labelling, E3, E5 steps 1-2 once labels exist, E6, E7.**
 
 Each has: goal, what to build, how to run it, how to judge. Estimated effort is for one agent.
 
