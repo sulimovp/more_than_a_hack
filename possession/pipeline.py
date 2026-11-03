@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from . import audio, ball, control, decoder, io, liveness, restarts, shape
+from . import audio, ball, control, decoder, io, liveness, restarts, shape, tracks
 
 SECOND_HALF_KICKOFF = 113742  # FAQ.md: 110808..113741 are graded and dead
 
@@ -10,6 +10,7 @@ SECOND_HALF_KICKOFF = 113742  # FAQ.md: 110808..113741 are graded and dead
 def features():
     """Everything the decoder reads, computed once. Separate so analysis can reuse it."""
     b_raw, players, team = io.load_atd()
+    players = tracks.repair_keepers(players, team)
     b = ball.repair(b_raw, players, team)
     tags = io.load_tags()
     whistle = audio.whistle_score()

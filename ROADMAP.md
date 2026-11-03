@@ -110,6 +110,12 @@ Consequences:
 
 ## 3. Experiments, in order
 
+**Status 3 Nov 2026.** E1: `tools/transition_review.py` is built and lists 428 transitions (H>A 100, A>H 98,
+live>D 115, D>live 115); it needs people to watch the clips (about 45 min of video, split with `--part i/n`), so
+the precision numbers are still open. E2: done, `analysis/gt_convention.md`. b (touch-then-action) is the largest
+class; a new tracking defect (keeper slots on the wrong keeper, 1,324 ball-near graded frames) goes first as E4b.
+**Order now: E1 labelling (team, in parallel), E5 with the "first controlled action" rule, E3, E6, E7.**
+
 Each has: goal, what to build, how to run it, how to judge. Estimated effort is for one agent.
 
 ### E1. Transition review: precision of what the pipeline already predicts (half a day)
@@ -185,6 +191,22 @@ Three small changes to `control.touch_events`, run one at a time:
 
 Judge: each must fix a named public case (15346 for 1 and 2, 17293 for 3), keep possessions
 within noise, and keep or improve H<->A precision from E1. Log each in `experiments.md`.
+
+### E4b. Goalkeeper slot repair (about an hour, first; added 3 Nov from E2)
+
+**Done 3 Nov, kept**: public macroF1 0.888 -> 0.915, spellF1 0.506 -> 0.520, possessions 313 -> 293 (`experiments.md`).
+
+Slots 23 (home keeper) and 45 (away keeper) jump onto the other team's keeper in runs: 17,850 graded frames
+with a keeper slot in the opponent's box, 1,324 of them within 3 m of the ball (public cases 11709-11723 and
+15654-15684; the first 59 s of the public window carry slot 45 in Barcelona's box). A keeper never stands in the
+opponent's box in open play.
+
+- In `possession/ball.py` or a new `possession/tracks.py`, after `io.load_atd()`: per half, using
+  `io.home_attacks_right`, set a keeper slot to NaN on frames where it is inside the opponent's 18 m box
+  (the other keeper slot is usually frozen or a ghost there; do not copy positions across).
+- Run `python -m possession.make_submission`, then `pytest`.
+- Judge: both public cases above stop being contacts for the wrong team; public macroF1 and possessions within
+  noise or better; no change outside frames where a keeper slot was dropped (diff the CSVs). Log in `experiments.md`.
 
 ### E5. Spell-level decoding for spellF1 (two days, after E1)
 
