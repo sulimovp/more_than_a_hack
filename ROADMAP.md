@@ -182,6 +182,10 @@ through the reported ball position, not to the reported point itself.
 
 ### E4. Touch detector repairs (one day)
 
+**Done 4 Nov.** (1)-(3) FAIL: none fixes its named case (15346 is suppressed by E5's confirm rule after the touch is
+found; 17293 has no acceleration peak at the real contact). Added and kept (4) reacquisition touch: public spellF1
+0.571 -> 0.607, macroF1 0.919 -> 0.930, possessions 271 -> 274, 17293 fixed (`experiments.md`). Next: E3, then E1 labels.
+
 Three small changes to `control.touch_events`, run one at a time:
 
 1. Deflection test on the relative speed **before** the peak (mean over the 5 frames before),

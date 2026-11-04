@@ -16,6 +16,9 @@ A touch counts only as the new team's first controlled action (analysis/gt_conve
 followed within CONFIRM_FRAMES by the other team's touch is a block, a deflection or a lost challenge
 and is dropped, so the latch never flips for it.
 
+The first visible frame after a gap of REACQUIRE_GAP frames is a touch by a player within REACQUIRE_M, whatever the
+relative speed: the ball often reappears as it leaves the kicker's foot (E4, public case 17293).
+
 A ball faster than 8 m/s with nobody within 2 m contributes no zone evidence. Relative speed
 above 8 m/s is a deflection, not a touch. On the public window the nearest player's team matches
 the truth 90% of the time when their relative speed is under 5 m/s, and 58% above 8 m/s.
@@ -42,6 +45,12 @@ FLIGHT_CLEAR_M = 2.0
 LATCH_WEIGHT = 0.5          # zone is -1..1; the latch is weaker, so a new touch can replace it
 DUEL_WEIGHT = 0.35
 CONFIRM_FRAMES = 50         # 2 s; public scores flat for 44-62 (experiments.md, 3 Nov E5)
+PRE_PEAK_FRAMES = 0         # E4.1: >0 tests deflection on the mean relative speed over these frames before the peak
+ORPHAN_ACC = 0.0            # E4.3: >0 attributes an unclaimed acceleration peak to a slot that just went missing
+ORPHAN_M = 3.0
+ORPHAN_FRAMES = FPS         # look back one second
+REACQUIRE_M = 0.5           # E4.4 (kept 4 Nov): makes the first visible frame after a gap a touch when a player is this close
+REACQUIRE_GAP = 3
 
 
 def player_velocities(players):
@@ -104,7 +113,29 @@ def _direction_change(vel, speed):
     return turn
 
 
-def touch_events(b, dist, rel):
+def _deflection_speed(rel, frame, side):
+    if PRE_PEAK_FRAMES == 0 or frame == 0:
+        return rel[frame, side]
+    window = rel[max(0, frame - PRE_PEAK_FRAMES):frame, side]
+    window = window[np.isfinite(window)]
+    return window.mean() if len(window) else np.nan
+
+
+def orphan_sides(b, players, team, frames):
+    """Side of the slot within ORPHAN_M of the ball in the last ORPHAN_FRAMES and missing now, per frame; -1 if none."""
+    out = np.full(len(frames), -1, dtype=int)
+    for k, frame in enumerate(frames):
+        lo = max(0, frame - ORPHAN_FRAMES)
+        d = np.linalg.norm(players[lo:frame] - b["ball"][lo:frame, None, :], axis=2)
+        near = np.nanmin(np.where(np.isnan(d), np.inf, d), axis=0) <= ORPHAN_M if frame > lo else np.zeros(len(team), bool)
+        gone = near & np.isnan(players[frame, :, 0])
+        sides = set(team[gone].tolist()) - {-1}
+        if len(sides) == 1:
+            out[k] = sides.pop()
+    return out
+
+
+def touch_events(b, dist, rel, players=None, team=None):
     """(frames, sides) of touches. side 0 is home, 1 is away.
 
     A touch is an acceleration peak, a direction change, or the onset of the ball staying at a
@@ -127,6 +158,15 @@ def touch_events(b, dist, rel):
         if run == TOUCH_HOLD_FRAMES:
             sustained[i - TOUCH_HOLD_FRAMES + 1] = True
     candidate |= sustained
+    reacquired = np.zeros(len(hold), dtype=bool)
+    if REACQUIRE_M > 0:
+        vis = b["visible"].astype(bool)
+        gap = 0
+        for i, v in enumerate(vis):
+            if v and gap >= REACQUIRE_GAP and dist[i].min() <= REACQUIRE_M:
+                reacquired[i] = True
+            gap = 0 if v else gap + 1
+    candidate |= reacquired
 
     frames = np.flatnonzero(candidate & b["visible"] & ~b["oob"])
     kept_f, kept_s = [], []
@@ -135,14 +175,22 @@ def touch_events(b, dist, rel):
         side = int(nearer[frame])
         if dist[frame, side] > TOUCH_M:
             continue
-        r = rel[frame, side]
-        if np.isfinite(r) and r > DEFLECTION_MPS:
+        r = _deflection_speed(rel, frame, side)
+        if np.isfinite(r) and r > DEFLECTION_MPS and not reacquired[frame]:
             continue
         if frame - last < TOUCH_HOLD_FRAMES:
             continue
         kept_f.append(frame)
         kept_s.append(side)
         last = frame
+    if ORPHAN_ACC > 0 and players is not None:
+        cand = np.flatnonzero(_local_peaks(acc, ORPHAN_ACC) & b["visible"] & ~b["oob"]
+                              & (dist.min(axis=1) > TOUCH_M))
+        cand = np.array([f for f in cand if all(abs(f - k) >= TOUCH_HOLD_FRAMES for k in kept_f)], dtype=int)
+        sides = orphan_sides(b, players, team, cand)
+        order = np.argsort(np.r_[kept_f, cand[sides >= 0]], kind="stable")
+        kept_f = list(np.r_[kept_f, cand[sides >= 0]][order])
+        kept_s = list(np.r_[kept_s, sides[sides >= 0]][order])
     return confirmed(np.asarray(kept_f, dtype=int), np.asarray(kept_s, dtype=int))
 
 
@@ -191,7 +239,7 @@ def zone_signal(b, dist, rel):
 
 def evidence(b, players, team):
     dist, rel = _closest(b, players, team)
-    frames, sides = touch_events(b, dist, rel)
+    frames, sides = touch_events(b, dist, rel, players, team)
     latched = latch_signal(len(players), frames, sides, halves())
     score = EVIDENCE_GAIN * (zone_signal(b, dist, rel) + LATCH_WEIGHT * latched)
     score[~b["visible"] | b["oob"]] = 0.0
