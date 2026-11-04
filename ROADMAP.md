@@ -162,6 +162,10 @@ Judge: the study decides which of E3, E4, E5 to run first. If (c)+(d) dominate, 
 
 ### E4 before E3 if E2 says so. E3. Airborne ball: distance to the camera ray (one day)
 
+**Closed 4 Nov, FAIL as framed** (`analysis/e3_camera_point.py`, `experiments.md`): flight bulges meet near the pitch
+centre with 6-7 of 17-18 lines, so no camera point; the 12665 header is at 0.9-1.7 m on the repaired ball and is lost
+to the deflection test, not to distance. No pipeline change.
+
 The tactical camera is fixed, high, at the halfway line on one side. The ATD ball is the ground
 projection of whatever the detector sees, so a ball 2 m in the air is reported metres further
 from the camera than the player under it (frame 12650 to 12665: the header is 7 m from the ATD
@@ -184,7 +188,7 @@ through the reported ball position, not to the reported point itself.
 
 **Done 4 Nov.** (1)-(3) FAIL: none fixes its named case (15346 is suppressed by E5's confirm rule after the touch is
 found; 17293 has no acceleration peak at the real contact). Added and kept (4) reacquisition touch: public spellF1
-0.571 -> 0.607, macroF1 0.919 -> 0.930, possessions 271 -> 274, 17293 fixed (`experiments.md`). Next: E3, then E1 labels.
+0.571 -> 0.607, macroF1 0.919 -> 0.930, possessions 271 -> 274, 17293 fixed (`experiments.md`). E3 closed the same day; next: E1 labels (people), then E5 steps 1-2, E6, E7.
 
 Three small changes to `control.touch_events`, run one at a time:
 
