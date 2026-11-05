@@ -94,3 +94,12 @@ Judge, label-free (ROADMAP E6 and section 2): FAIL, nothing kept.
 Both flags stay off (TECHNICAL.md). The model needs labelled frames where the weak labels are silent: visible slow-ball play and gaps at 1.0-2.0 m/s. Those are exactly what the gap review and E1's live<->D answers give.
 
 Set pieces: `python -m possession.report` on the committed file (sha256 `833f5c79b306…`, the 4 Nov E4 output) reads 58/62. The 4 Nov row says 57/62.
+
+5 Nov, E8 step 1 dry run on this machine (no change; sha256 `833f5c79b306…` reproduced). Fresh `git clone` of `origin` at 82d4873 into a temporary folder, using the existing Python 3.13.5 with the pinned packages (nothing installed). The five tactical files were hard-linked into the clone's `data/tactical/`, not copied, and the cache started empty. `python -m possession.make_submission` rebuilt both caches and wrote the file in 85 s.
+
+- The sha256 equals `tests/expected_sha256.txt`.
+- Both rebuilt caches (`whistle_score.npy`, `tactical_atd.npz`) are byte-identical to the working copy's.
+- The clone's `pytest` passes 22 of 22, `validate_submission.py` says valid, and the clone's `git status` is clean.
+- The clone was deleted afterwards.
+
+Heads-up for the second machine: 751 frames have a whistle score within 0.5 dB of `WHISTLE_DB` 13.0. Lowering the threshold by 0.5 dB changes nothing. Raising it by 0.25 or 0.5 dB moves the same 5 graded frames (69135-69140; sha256 `205ec86569a1` at 13.5 dB), with possessions and public scores unchanged. A hash mismatch there that comes from an ffmpeg build decoding the audio slightly quieter would be those 5 frames: compare `whistle_score.npy` first.

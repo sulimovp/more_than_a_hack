@@ -122,7 +122,7 @@ also have to confirm the 2 s window. **Order now: E1 labelling, E3, E5 steps 1-2
 **Status 5 Nov.** E5 steps 1-2 built, label-free part only: `decoder.posteriors` and `decoder.remove_uncertain_spells`,
 the removal off (`MIN_RISK = None`, submission unchanged); `python -m analysis.e5_fit_min_risk` fits its calibration and
 threshold from `data/labels/` as soon as E1 answers exist. E6 built as specified: FAIL (D share 57-60%), so
-`pipeline.LIVENESS_MODEL` and `normalise_team` stay off. E8 step 1 dry run done on this machine (below). **Order now:
+`pipeline.LIVENESS_MODEL` and `normalise_team` stay off. E8 step 1 dry run on this machine: PASS (below). **Order now:
 E1 labelling and the gap review (people), then the E5 fit and E7; E6 again only with gap-review or E1 live<->D labels.**
 
 Each has: goal, what to build, how to run it, how to judge. Estimated effort is for one agent.
@@ -281,6 +281,11 @@ a few seconds after the ball is back inside the pitch and visible if E1 shows th
 held dead too long.
 
 ### E8. Freeze protocol (14 to 16 Nov)
+
+**Step 1 dry run 5 Nov, on this machine, PASS** (`experiments.md`). Fresh clone, empty cache, data hard-linked
+rather than copied: 85 s, sha256 equal to `tests/expected_sha256.txt`, and both caches byte-identical. Still to do
+on a second machine. If the hash differs there, look at the audio first: 751 frames sit within 0.5 dB of
+`WHISTLE_DB`, and a 0.25 dB higher threshold moves 5 graded frames (69135-69140) and nothing else.
 
 1. Fresh clone on a second machine, `pip install -r requirements-pipeline.txt`, empty
    `data/cache/`, `python -m possession.make_submission --team <team_name>`; the hash must equal
