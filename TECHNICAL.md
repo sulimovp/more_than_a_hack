@@ -96,6 +96,15 @@ missing; the misses above are on frames where the ball is already tracked.
 The whistle score does not change the decode. Stoppage length is set by the tracking gaps and by
 player speed.
 
+Liveness is rule-based. A gradient-boosted liveness model was built and is not used. Its training labels
+were rules: dead when the ball is out of the pitch, during slow tracking gaps and just before a kickoff;
+live when a fast ball is among running players. The model can tell those labels apart from the very
+features that define them, so it repeats the rules everywhere else and calls 57-60% of graded time dead.
+For the same reason the decoder keeps its unnormalised team emission, in which a live frame with no team
+evidence pays log 2 against dead. Normalising it moved two of the four public stoppage onsets later and
+added possessions; under the learned liveness, whose log-odds dwarf log 2, it changed almost nothing. A
+learned liveness needs labelled frames where those rules say nothing.
+
 There is no hand-labelled sample beyond the public five minutes, so the transition costs and the
 speed thresholds have not been calibrated. They are physical values, and the sensitivity of the
 earlier file is in `analysis/sensitivity.md`. Moving them to chase the public window is how the

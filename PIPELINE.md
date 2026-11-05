@@ -27,10 +27,11 @@ pipeline on purpose, regenerate the file and update that hash in the same commit
 | S1 | `ball.py` | ball track | stuck and teleport detections removed, dropouts under 1 s filled, Savitzky-Golay velocity and acceleration, out-of-pitch with line |
 | S2a | `audio.py` | the video's audio | narrow-band 2.5-4.5 kHz whistle score per frame |
 | S2 | `liveness.py` | S1, players, S2a, tags | log-odds that the ball is in play; bonuses for entering a stoppage (whistle, ball out, ball vanishes) and leaving one (strike past 5 m/s, ball reappears) |
+| S2 v2 | `livemodel.py` | S1, players, S2a, tags | P(alive) from a LightGBM on weak labels, cross-half. **Off** (`pipeline.LIVENESS_MODEL`): it fails the E6 checks, D share 57-60% |
 | S3 | `control.py` | S1, players | H-vs-A log-odds from the 1.5 m zone, plus the last touch held until the next one |
 | S5 | `restarts.py` | S2, tags | restarting team: kickoff laws, tagged set pieces, otherwise the taker |
 | S4 | `shape.py` | players, first-pass labels | H-vs-A from team shape in ball gaps; LightGBM trained on self-labelled frames of the other half |
-| S6 | `decoder.py` | all of the above | Viterbi over H/A/D per half, minimum spell 8 frames, minimum stoppage 50 frames |
+| S6 | `decoder.py` | all of the above | Viterbi over H/A/D per half, minimum spell 8 frames, minimum stoppage 50 frames. `posteriors()` gives forward-backward marginals on the same chain; the E5 minimum-risk spell removal is **off** (`MIN_RISK = None`) until the E1 labels set it |
 | S7 | `make_submission.py` | S6 | the CSV, X outside the graded halves, D before the second-half kickoff |
 
 ## Where it stands (2 Nov)

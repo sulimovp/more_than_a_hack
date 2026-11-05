@@ -35,6 +35,18 @@ def sha256(path):
         return hashlib.sha256(handle.read()).hexdigest()
 
 
+def codes_sha256(codes):
+    """SHA-256 of the file write_csv() would write for these codes, for logging experiment runs."""
+    import tempfile
+    fd, path = tempfile.mkstemp(suffix=".csv")
+    os.close(fd)
+    try:
+        write_csv(codes, path)
+        return sha256(path)
+    finally:
+        os.remove(path)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--team", default="possession_pipeline", help="file is named <team>.csv")

@@ -39,3 +39,58 @@ Tried on 2 Nov and not kept (ROADMAP.md section 1 has the numbers): team evidenc
 | 4 Nov | E4 touch repairs, sweep `python -m analysis.e4_touch_repairs` (switches in `control.py`, off unless noted). (1) deflection on the mean relative speed over the 5 frames before the peak: public unchanged, 277 possessions. (2) as (1) with `TOUCH_ACC` 15: spellF1 0.520, macroF1 0.915, 284. (3) orphan touches to a slot within 3 m in the last second and missing now: no change at all. None fixes its named case. 15346: at `TOUCH_ACC` 15 the home touch at 15360 (0.95 m, rel 7.4 m/s) is found, but E5 drops it because Athletic touches again at 15399; the 0.8 s H spell is the kind of event E5 suppresses, and the smoothed acceleration peaks 14 frames after the contact. 17293: the ball reappears at 17279 with home at 0.27 m and rel 15 m/s (the kick leaving the foot), a frame with no acceleration peak; orphan finds nothing because the ball was invisible over the look-back. Added (4) reacquisition touch (`REACQUIRE_M` 0.5): the first visible frame after 3+ invisible frames is a touch by the nearest player within 0.5 m, whatever the relative speed | 0.607 | 0.930 | 274 | 49.4% | 57/62 | 81.8% | (4) yes: 17293 H MISS to ok (IoU 0.70), the A spell before it 0.89 to 0.98, stoppages unchanged, spells under 1 s 10. 1.0 m scores the same (269 possessions); 0.5 kept as the narrower rule. (1)-(3) no. 15346 left: fixing it means a GT-convention exception to E5, which one public event cannot justify |
 
 4 Nov, E3 (no pipeline change), `python -m analysis.e3_camera_point`: the camera ground point is not identifiable from flights. 17 and 18 fast flights per half (visible runs over 12 m/s, chord over 15 m, mid-flight bulge over 0.7 m); the bulge lines meet near the pitch centre ((55, 42) and (51, 39); bootstrap 90% boxes about 20 m by 15 m), with only 7 and 6 lines within 15 m of that point. A fixed camera beyond a touchline would put the point outside the pitch with most lines through it, so the bulges are swerve and noise, not projection. The named case does not need it either: on the repaired ball the header passes Athletic 40 at 0.9 m (12649) and Athletic 42 at 1.7 m (12658) at 19-22 m/s with no change of direction, so it is rejected by the 8 m/s deflection test, not by distance. E3 closed, FAIL as framed; the open lever for 12665 is a header-specific deflection rule, which one public case cannot set.
+
+5 Nov, E5 step 1 (no pipeline change; submission sha256 `833f5c79b306…` unchanged), `python -m analysis.e5_posteriors`, written to `analysis/e5_posteriors.md`. `decoder.posteriors` runs forward-backward on the decoder's own chain: the same states, emissions and transition scores, log-sum-exp where Viterbi takes the max. It matches brute-force path enumeration to 1e-12 in `tests/`, and takes 10 s for the match. The posterior's most likely label equals the Viterbi label on 99.42% of graded frames; 1.83% of graded frames have no label above 0.9. Per predicted possession, the mean posterior of its own label is overconfident (5th / 25th / 50th percentile 0.926 / 0.985 / 0.995). It falls with length (median 0.979 under 1 s, 0.999 over 20 s), but the public window's one false possession (H 12801-12831, 1.2 s) sits at 0.997, so no calibration can be read off without labels. The per-spell table (start, stop, label, length, mean and minimum posterior, neighbours) is in `data/analysis/e5_spell_posteriors.csv` (gitignored, since it is the submission in another form).
+
+5 Nov, E5 step 2 built and off (`decoder.MIN_RISK = None`; sha256 unchanged). `decoder.remove_uncertain_spells` removes the possession with the lowest P(real) = s(a + b logit(mean posterior) + c log(length s)) while that is under the threshold, one at a time. Its frames go to the previous team (the roadmap rule), or with `MIN_RISK_MERGE = "posterior"` to the neighbour the posterior prefers. Mechanics check with the placeholder calibration (a, b, c) = (0, 1, 0), not a selection:
+
+| threshold | possessions removed | possessions (full) | D share | public spellF1 | public macroF1 | public matched lost | sha256 |
+|---|---|---|---|---|---|---|---|
+| off | 0 | 274 | 49.4% | 0.607 | 0.930 | - | 833f5c79b306 |
+| 0.8 | 11 | 263 | 50.6% | 0.607 | 0.930 | none | fd9a16fff847 |
+| 0.9 | 35 | 239 | 54.2% | 0.607 | 0.930 | none | 53e07eca1ce7 |
+| 0.95 | 74 | 200 | 60.6% | 0.519 | 0.774 | A 16400-17293, H 17293-17380 | c05cca647475 |
+| 0.98 | 135 | 139 | 70.4% | 0.519 | 0.774 | the same two | 682de878ec42 |
+
+At 0.95 the 35 s A spell 16400-17279 (mean posterior 0.918) is removed and, after a stoppage, given to the next team. So the length term has to come from the labels, and D share rises because spells between two stoppages become D. Waiting for E1: `python -m analysis.e5_fit_min_risk`. It labels each predicted possession real or not from the answers on its two transitions, fits (a, b, c), and scores both merge rules at thresholds 0.05-0.95 by expected spellF1 on the labelled spells. It recommends a setting only if the 5th percentile of its bootstrap gain is above zero and the public window keeps every matched possession. Smoke-tested on random synthetic answers in a temporary folder outside `data/` (deleted); with no labels it prints that there is nothing to fit.
+
+5 Nov, E6 (no pipeline change; `pipeline.LIVENESS_MODEL = None` and `normalise_team` off; sha256 unchanged), `python -m analysis.e6_liveness_model`. The weak-label liveness model as specified is in `possession/livemodel.py`:
+
+- 22 features after Lang et al. 2022: collective speed and acceleration at 0.4-10 s, the gap features, the ball features, whistle, tag timing, box counts and own-half share.
+- Weak labels: dead is out of pitch, the 50 frames before a kickoff, or a gap with median speed under 1.0 m/s; live is a visible ball over 5 m/s with players over 2 m/s. They cover 11.5% live and 19.4% dead of all frames.
+- LightGBM as in `shape.py`, cross-half, P rounded to 0.02.
+
+The labels are separable by the features that define them. Cross-half accuracy on labelled frames is 100.0% and 99.9%, and 95% of the gain goes to `line_m`, which is missing whenever the ball is. So the model learns that a missing or outside ball means dead: 0% of missing-ball graded frames are called alive, and the halves disagree on unlabelled frames (24% and 72% alive). As a diagnostic, the same model without the ball features (`livemodel.BALL_FEATURES`) learns the live label's own 2 m/s cut instead: 69% of the gain on 0.4 s speed, against a graded median of 1.35 m/s.
+
+| variant (liveness, normalise_team) | public spellF1 | public macroF1 | possessions | stoppages | D share | D share ball visible / missing | set pieces | phase | under 1 s | frames changed | sha256 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| rule, off (the submission) | 0.607 | 0.930 | 274 | 117 | 49.4% | 19.9% / 90.9% | 58/62 | 81.8% | 10 | 0 | 833f5c79b306 |
+| rule, on | 0.579 | 0.917 | 282 | 117 | 47.9% | 18.8% / 88.9% | 58/62 | 81.3% | 11 | 2549 | 21c3016dd3f3 |
+| model, off | 0.224 | 0.659 | 370 | 226 | 58.3% | 28.7% / 100% | 58/62 | 80.2% | 39 | 27416 | 4eecc506a5f9 |
+| model, on | 0.224 | 0.659 | 368 | 224 | 58.2% | 28.6% / 100% | 58/62 | 80.3% | 37 | 27298 | 1d0a1d1b1246 |
+| model + laws (out of pitch, pending restart), off | 0.230 | 0.672 | 351 | 214 | 59.7% | 31.2% / 100% | 57/62 | 80.5% | 33 | 25078 | 1c5c95206d8d |
+| model + laws, on | 0.230 | 0.672 | 349 | 212 | 59.7% | 31.1% / 100% | 57/62 | 80.5% | 31 | 24954 | 7d345a17fb64 |
+| rule + model log-odds, off | 0.277 | 0.698 | 364 | 217 | 57.2% | 26.8% / 100% | 57/62 | 80.5% | 34 | 25272 | fe45923605e1 |
+| rule + model log-odds, on | 0.277 | 0.705 | 364 | 217 | 57.1% | 26.7% / 100% | 57/62 | 80.5% | 33 | 25148 | 4dea94f8869a |
+| no-ball model, off | 0.180 | 0.626 | 361 | 272 | 71.4% | 55.7% / 93.5% | 57/62 | 82.3% | 39 | 40373 | 100fb0cb29e6 |
+| no-ball model, on | 0.190 | 0.629 | 362 | 274 | 71.2% | 55.6% / 93.3% | 57/62 | 82.2% | 35 | 40142 | c8e65657a0fb |
+| no-ball model + laws, off | 0.220 | 0.652 | 355 | 271 | 72.4% | 56.8% / 94.5% | 56/62 | 82.3% | 39 | 38699 | a7ba9abfdaa6 |
+| no-ball model + laws, on | 0.220 | 0.654 | 357 | 273 | 72.2% | 56.6% / 94.3% | 56/62 | 82.2% | 37 | 38550 | 3616e29579cf |
+| rule + no-ball model, off | 0.219 | 0.658 | 357 | 262 | 69.6% | 52.6% / 93.6% | 58/62 | 81.9% | 30 | 36498 | 42165a7e94fb |
+| rule + no-ball model, on | 0.219 | 0.656 | 359 | 264 | 69.4% | 52.5% / 93.3% | 58/62 | 81.8% | 28 | 36379 | 79dec08e534d |
+
+Public stoppage edges, predicted minus true start/stop in frames (IoU), for 12851-12989, 15889-16400, 17380-17838 and 18027-18389:
+
+- rule, normalise_team off: −20/−10 (0.81), +39/0 (0.92), +24/+5 (0.94), −1/−23 (0.93).
+- rule, normalise_team on: +30/−10 (0.71), +39/0 (0.92), +78/+5 (0.82), −1/−24 (0.93).
+- The model variants start the 17380 stoppage 228-333 frames early and end 18027-18389 by up to 296 frames late.
+
+Judge, label-free (ROADMAP E6 and section 2): FAIL, nothing kept.
+
+- No model variant keeps D share within 40-50%. It is 57-60% as specified and 69-72% without the ball features. Set pieces stay at 56-58/62.
+- `normalise_team=True` with the rule-based S2 passes D share (47.9%) and set pieces (58/62). But it fixes no named public failure, moves two weak checks the wrong way (possessions 274 to 282, phase agreement 81.8% to 81.3%), and makes two public stoppage onsets worse (12851 and 17380 above).
+- With the model, `normalise_team` changes almost nothing, because the model's ±6.9 log-odds dwarf the log 2 bias.
+
+Both flags stay off (TECHNICAL.md). The model needs labelled frames where the weak labels are silent: visible slow-ball play and gaps at 1.0-2.0 m/s. Those are exactly what the gap review and E1's live<->D answers give.
+
+Set pieces: `python -m possession.report` on the committed file (sha256 `833f5c79b306…`, the 4 Nov E4 output) reads 58/62. The 4 Nov row says 57/62.

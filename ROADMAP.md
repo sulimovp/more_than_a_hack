@@ -119,6 +119,12 @@ E5 rule part done 3 Nov (`control.confirmed`, 2 s): public spellF1 0.520 to 0.57
 293 to 271 (experiments.md). E5 steps 1-2 below (posteriors, minimum-risk spell removal) wait for the E1 labels, which
 also have to confirm the 2 s window. **Order now: E1 labelling, E3, E5 steps 1-2 once labels exist, E6, E7.**
 
+**Status 5 Nov.** E5 steps 1-2 built, label-free part only: `decoder.posteriors` and `decoder.remove_uncertain_spells`,
+the removal off (`MIN_RISK = None`, submission unchanged); `python -m analysis.e5_fit_min_risk` fits its calibration and
+threshold from `data/labels/` as soon as E1 answers exist. E6 built as specified: FAIL (D share 57-60%), so
+`pipeline.LIVENESS_MODEL` and `normalise_team` stay off. E8 step 1 dry run done on this machine (below). **Order now:
+E1 labelling and the gap review (people), then the E5 fit and E7; E6 again only with gap-review or E1 live<->D labels.**
+
 Each has: goal, what to build, how to run it, how to judge. Estimated effort is for one agent.
 
 ### E1. Transition review: precision of what the pipeline already predicts (half a day)
@@ -221,6 +227,11 @@ opponent's box in open play.
 
 ### E5. Spell-level decoding for spellF1 (two days, after E1)
 
+**Steps 1-2 built 5 Nov; step 2 off until E1** (`analysis/e5_posteriors.md`, `experiments.md`). The posteriors are
+overconfident (median possession 0.995; the public window's false 1.2 s H spell sits at 0.997), so the calibration
+carries the decision, and with the length-blind placeholder calibration a 35 s spell at 0.918 gets removed. When
+`data/labels/transitions_*.csv` exist: `python -m analysis.e5_fit_min_risk`, then set what it recommends, if anything.
+
 Viterbi maximises frame-path likelihood; spellF1 scores possessions hit-or-miss at IoU 0.3 to
 0.7. A wrong short spell costs a false positive *and* splits a true possession, so an uncertain
 short spell should be dropped more readily than an uncertain long one. Two steps:
@@ -236,6 +247,13 @@ Judge: expected spellF1 on the E1 labels; the public window must not lose a matc
 This is also where "chasing 0.8 s blips" is settled with numbers rather than by hand.
 
 ### E6. Liveness: the learned model and the emission bias (two days, after E1 and gap review)
+
+**Built 5 Nov, FAIL as specified, off** (`possession/livemodel.py`, `python -m analysis.e6_liveness_model`,
+`experiments.md`). The weak labels can be separated by the very features that define them, so the model repeats the
+labelling rules on the 61% of graded frames they leave out. With the ball features, a missing ball means dead (D share
+57-60%). Without them, the live label's own 2 m/s collective-speed cut does the same job (D share 69-72%).
+`normalise_team=True` stays off with either liveness (TECHNICAL.md). Retry only with labelled frames where the weak
+labels are silent: visible slow-ball play and gaps at walking-to-jogging pace (gap review, E1 live<->D).
 
 PLAN.md S2 v2 was never built. With gap-review answers and E1's live<->D precision there is
 finally something to fit against:
