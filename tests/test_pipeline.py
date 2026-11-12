@@ -110,6 +110,25 @@ def test_flight_keeps_the_last_touch_when_the_zone_is_empty():
     assert score[0] == 0
 
 
+def test_broadcast_offset_search_recovers_a_shift(monkeypatch):
+    from possession import broadcast
+    rng = np.random.default_rng(2)
+    n_bc, shift = 30000, 7321
+    walk = np.cumsum(rng.normal(0, 1.2, (n_bc, 2)), axis=0)        # a ball moving about 1.7 m per frame
+    bc_ball = walk.astype(np.float32)
+    bc_ball[rng.uniform(size=n_bc) < 0.2] = np.nan
+    tactical = np.full((shift + n_bc + 5000, 2), np.nan, dtype=np.float32)
+    tactical[shift:shift + n_bc] = walk + rng.normal(0, 0.5, (n_bc, 2))
+    monkeypatch.setattr(broadcast, "MIN_OVERLAP_FRAMES", 5000)
+    assert broadcast.find_offset(tactical, bc_ball, 0, len(tactical)) == shift
+
+
+@pytest.mark.skipif(not os.path.exists(io.asset_paths(source="broadcast")["atd_raw"]), reason="broadcast data not present")
+def test_broadcast_offsets_on_this_match():
+    from possession import broadcast
+    assert broadcast.offsets() == {1: 4014, 2: 26920}
+
+
 def test_graded_blocks_and_frame_count():
     assert io.N_FRAMES == 199319
     assert io.halves() == [(1, 11185, 90652), (2, 110808, 190198)]

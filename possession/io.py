@@ -68,9 +68,10 @@ def home_attacks_right(half):
     return first_half_ltr if half == 1 else not first_half_ltr
 
 
-def _parse_atd(raw_path, n_tracks):
-    ball = np.full((N_FRAMES, 2), np.nan, dtype=np.float32)
-    players = np.full((N_FRAMES, n_tracks, 2), np.nan, dtype=np.float32)
+def parse_atd(raw_path, n_tracks, n_frames=N_FRAMES):
+    """(ball, players) in metres, one row per frame of that recording (row = frame_id - 1)."""
+    ball = np.full((n_frames, 2), np.nan, dtype=np.float32)
+    players = np.full((n_frames, n_tracks, 2), np.nan, dtype=np.float32)
     with open(raw_path) as handle:
         for line in handle:
             frame_id, player_part, ball_part = line.rstrip().split(":")
@@ -91,7 +92,7 @@ def load_atd():
     if not os.path.exists(path):
         paths = asset_paths()
         team = team_of_each_track(paths["atd_meta"])
-        ball, players = _parse_atd(paths["atd_raw"], len(team))
+        ball, players = parse_atd(paths["atd_raw"], len(team))
         np.savez_compressed(path, ball=ball, players=players, team=team)
     data = np.load(path)
     return data["ball"], data["players"], data["team"]
