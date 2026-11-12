@@ -127,3 +127,10 @@ Tried on 12 Nov in scratch code and not kept (none of it is in the repository; d
 - Handing a keeper slot found in the opponent's box to the opponent's keeper slot instead of dropping it: 145 positions, 2 frames change.
 
 A one-off sanity check, not used to select anything (it leans on numbers derived from the private ground truth): scoring the four committed baselines against the 4 Nov file (`833f5c79b306`) as if it were the truth gives spellF1 0.051 / 0.197 / 0.229 / 0.245 for raw, smooth25, smooth50 and smooth125, against their published full-match 0.0486 / 0.1996 / 0.2433 / 0.2242.
+
+12 Nov, fresh-clone dry run on this machine (sha256 `df2f5e7768aa…` reproduced). `git clone` of the branch at 0998990 into a temporary folder, the same Python 3.13.5 with the pinned packages, the five tactical files and the broadcast ATD and its metadata hard-linked into the clone's `data/`, and no cache. `python -m possession.make_submission` rebuilt all four caches and wrote the file in 113 s (85 s on 5 Nov; the broadcast parse and the offset search add the rest).
+
+- The sha256 equals `tests/expected_sha256.txt`.
+- The rebuilt caches (`tactical_atd.npz`, `whistle_score.npy`, `broadcast_atd.npz`, `broadcast_offsets.json`) are byte-identical to the working copy's.
+- The clone's `pytest` passes 25 of 25, `validate_submission.py` says valid, and the clone's `git status` is clean.
+- The clone was deleted afterwards. A second machine is still to do (ROADMAP E8 step 1).

@@ -125,6 +125,20 @@ threshold from `data/labels/` as soon as E1 answers exist. E6 built as specified
 `pipeline.LIVENESS_MODEL` and `normalise_team` stay off. E8 step 1 dry run on this machine: PASS (below). **Order now:
 E1 labelling and the gap review (people), then the E5 fit and E7; E6 again only with gap-review or E1 live<->D labels.**
 
+**Status 12 Nov.** No hand labels exist and none will come, so E1, the gap review, the E5 fit, E6 again and E7 are
+closed as they stand; nothing that waits for labels will be switched on before the upload. Done on 12 Nov (branch
+`broadcast-second-view`, experiments.md): the broadcast tracking is aligned to the tactical timeline with one offset
+per half found from the two ball tracks (`possession/broadcast.py`; 4014 and 26920, not the 4008 of 24 Oct), so the
+section 4 entry "Broadcast ATD as a second ball" is reopened and settled. It now vetoes a confirmed touch when it sees
+the same ball with the other team's player at it (`control.contradicted`, 26 of 1,044 touches): public window
+unchanged (spellF1 0.607, macroF1 0.930, 12 of 17 possessions), possessions 274 to 259, stoppages 117, D share 49.4%,
+set pieces 58/62, phase agreement 81.8% to 82.6%, sha256 `df2f5e7768aa`. Broadcast stand-in players for touches the
+tactical view misses were tested once and not kept (phase agreement 82.4%, neither named case fixed); five other
+broadcast and track variants are logged as not kept. Fresh-clone dry run on this machine reproduces the hash.
+**Left before the upload:** E8 step 1 on a second machine (still open; a fresh run now also parses the broadcast and
+searches the offsets), the team name in the file name (`--team <team_name>`), and `python
+evaluation/validate_submission.py` on the exact file that is uploaded.
+
 Each has: goal, what to build, how to run it, how to judge. Estimated effort is for one agent.
 
 ### E1. Transition review: precision of what the pipeline already predicts (half a day)
@@ -308,7 +322,9 @@ on a second machine. If the hash differs there, look at the audio first: 751 fra
 - **Latch reset at every stoppage**: 293 possessions and a worse public window; the restart team
   already handles it.
 - **Broadcast ATD as a second ball**: 27% agreement with the public labels where it disagrees
-  with the tactical ball (experiments.md). Parked.
+  with the tactical ball (experiments.md). Parked. Reopened 12 Nov: that count used a wrong offset
+  (4008); aligned at 4014 and 26920 the broadcast is used as a veto on touches (status block in
+  section 3).
 - **Ball re-detection from the video (WASB)**: only if E2 shows ATD ball error dominates *and*
   E3 does not recover the airborne cases. A week of work; not before 10 Nov.
 - **PathCRF emissions**: the shape model already gives 83% cross-half accuracy at zero cost and
