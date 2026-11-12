@@ -110,6 +110,22 @@ def test_flight_keeps_the_last_touch_when_the_zone_is_empty():
     assert score[0] == 0
 
 
+def test_second_view_vetoes_only_a_contradicting_touch():
+    n = 5
+    b = {"ball": np.zeros((n, 2))}
+    second = {"ball": np.zeros((n, 2)), "players": np.full((n, 2, 2), np.nan), "team": np.array([0, 1])}
+    second["players"][:, 1] = (1.0, 0.0)              # an away player 1 m from the broadcast ball on every frame
+    second["ball"][1] = (5.0, 0.0)                    # frame 1: the views see different balls
+    second["players"][1, 1] = (6.0, 0.0)
+    second["players"][2, 0] = (0.5, 0.0)              # frame 2: a home player is nearer
+    second["players"][3, 1] = (2.0, 0.0)              # frame 3: the away player is outside VETO_PLAYER_M
+    second["ball"][4] = np.nan                        # frame 4: no broadcast ball
+    frames = np.array([0, 1, 2, 3, 4])
+    home = control.contradicted(b, frames, np.zeros(n, int), second)
+    assert home.tolist() == [True, False, False, False, False]
+    assert not control.contradicted(b, frames[:1], np.ones(1, int), second).any()   # an away touch is confirmed
+
+
 def test_broadcast_offset_search_recovers_a_shift(monkeypatch):
     from possession import broadcast
     rng = np.random.default_rng(2)

@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from . import audio, ball, control, decoder, io, livemodel, liveness, restarts, shape, tracks
+from . import audio, ball, broadcast, control, decoder, io, livemodel, liveness, restarts, shape, tracks
 
 SECOND_HALF_KICKOFF = 113742  # FAQ.md: 110808..113741 are graded and dead
 # E6: None keeps the rule-based S2. "replace", "replace+laws" or "add" bring in the weak-label LightGBM
@@ -16,6 +16,8 @@ def features(liveness_model=None):
     b_raw, players, team = io.load_atd()
     players = tracks.repair_keepers(players, team)
     b = ball.repair(b_raw, players, team)
+    bc_ball, bc_players, bc_team = broadcast.on_tactical()
+    second = {"ball": bc_ball, "players": tracks.repair_keepers(bc_players, bc_team), "team": bc_team}
     tags = io.load_tags()
     whistle = audio.whistle_score()
     live = liveness.evidence(b, players, whistle, tags)
@@ -31,7 +33,8 @@ def features(liveness_model=None):
         "tags": tags,
         "whistle": whistle,
         "live": live,
-        "control": control.evidence(b, players, team),
+        "broadcast": second,
+        "control": control.evidence(b, players, team, second),
         "restart_team": restarts.evidence(live, b, tags),
     }
 

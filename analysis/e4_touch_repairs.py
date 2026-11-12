@@ -31,7 +31,7 @@ def run(f, settings):
     for k, v in settings.items():
         setattr(control, k, v)
     try:
-        f["control"] = control.evidence(f["ball"], f["players"], f["team"])
+        f["control"] = control.evidence(f["ball"], f["players"], f["team"], f["broadcast"])
         first = pipeline.decode(f)
         return pipeline.decode(f, pipeline.add_shape(f, first))
     finally:

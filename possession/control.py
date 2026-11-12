@@ -19,6 +19,10 @@ and is dropped, so the latch never flips for it.
 The first visible frame after a gap of REACQUIRE_GAP frames is a touch by a player within REACQUIRE_M, whatever the
 relative speed: the ball often reappears as it leaves the kicker's foot (E4, public case 17293).
 
+With a second view (the broadcast tracking on the tactical timeline, broadcast.py), a confirmed touch is dropped when
+that view sees the same ball, within VETO_BALL_M, with a player of the other team nearest it within VETO_PLAYER_M. The
+second view only removes touches; it never adds one or sets a team.
+
 A ball faster than 8 m/s with nobody within 2 m contributes no zone evidence. Relative speed
 above 8 m/s is a deflection, not a touch. On the public window the nearest player's team matches
 the truth 90% of the time when their relative speed is under 5 m/s, and 58% above 8 m/s.
@@ -51,6 +55,8 @@ ORPHAN_M = 3.0
 ORPHAN_FRAMES = FPS         # look back one second
 REACQUIRE_M = 0.5           # E4.4 (kept 4 Nov): makes the first visible frame after a gap a touch when a player is this close
 REACQUIRE_GAP = 3
+VETO_BALL_M = 3.0           # the two views' balls agree: they see the same ball (broadcast.BALL_AGREE_M)
+VETO_PLAYER_M = 1.5         # a second-view player this close is at the ball (TOUCH_M)
 
 
 def player_velocities(players):
@@ -203,6 +209,21 @@ def confirmed(frames, sides, window=CONFIRM_FRAMES):
     return frames[keep], sides[keep]
 
 
+def contradicted(b, frames, sides, second):
+    """True for each touch the second view contradicts. second: {"ball", "players", "team"} on the same frames.
+
+    The two balls must be within VETO_BALL_M (else the views may be looking at different things), and the second
+    view's nearest player must be within VETO_PLAYER_M and of the other team. A tie in distance contradicts nothing."""
+    sep = np.linalg.norm(b["ball"][frames] - second["ball"][frames], axis=1)
+    d = np.linalg.norm(second["players"][frames] - second["ball"][frames][:, None, :], axis=2)
+    d = np.where(np.isnan(d), np.inf, d)
+    d_home = np.where(second["team"] == 0, d, np.inf).min(axis=1)
+    d_away = np.where(second["team"] == 1, d, np.inf).min(axis=1)
+    other_nearer = np.where(sides == 0, d_away < d_home, d_home < d_away)
+    at_ball = np.minimum(d_home, d_away) < VETO_PLAYER_M
+    return (np.nan_to_num(sep, nan=np.inf) < VETO_BALL_M) & at_ball & other_nearer
+
+
 def latch_signal(n, frames, sides, blocks):
     """+/-1 from each touch until the next one, and 0 before the first touch in a block."""
     signal = np.zeros(n)
@@ -237,9 +258,13 @@ def zone_signal(b, dist, rel):
     return diff
 
 
-def evidence(b, players, team):
+def evidence(b, players, team, second=None):
+    """Home-minus-away control log-odds per frame. second is a second view for contradicted(), or None."""
     dist, rel = _closest(b, players, team)
     frames, sides = touch_events(b, dist, rel, players, team)
+    if second is not None:
+        keep = ~contradicted(b, frames, sides, second)
+        frames, sides = frames[keep], sides[keep]
     latched = latch_signal(len(players), frames, sides, halves())
     score = EVIDENCE_GAIN * (zone_signal(b, dist, rel) + LATCH_WEIGHT * latched)
     score[~b["visible"] | b["oob"]] = 0.0

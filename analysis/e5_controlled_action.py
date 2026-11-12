@@ -13,7 +13,7 @@ from possession.report import public_unit_tests
 def run(f, window):
     default = control.confirmed.__defaults__
     control.confirmed.__defaults__ = (window,)
-    f["control"] = control.evidence(f["ball"], f["players"], f["team"])
+    f["control"] = control.evidence(f["ball"], f["players"], f["team"], f["broadcast"])
     control.confirmed.__defaults__ = default
     first = pipeline.decode(f)
     return pipeline.decode(f, pipeline.add_shape(f, first))
