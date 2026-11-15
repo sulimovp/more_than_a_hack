@@ -1,6 +1,6 @@
 # Ball possession from automatic tracking
 
-Team Arraxis: Sergey Eremeykin, Daniil Sulimov.  
+Team Arraxis: Pavel Sulimov, Sergey Eremeykin, Daniil Sulimov.  
 Code: <https://github.com/sulimovp/more_than_a_hack>
 
 Method note for More than a Hack 2027, phase 1. The ranked file is one label per tactical
