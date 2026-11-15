@@ -1,5 +1,8 @@
 # Ball possession from automatic tracking
 
+Team Arraxis: Sergey Eremeykin, Daniil Sulimov.  
+Code: <https://github.com/sulimovp/more_than_a_hack>
+
 Method note for More than a Hack 2027, phase 1. The ranked file is one label per tactical
 frame. This note is the description that goes with it.
 
@@ -79,8 +82,8 @@ overlaps the half, with ties going to the smaller shift. On this match the tacti
 broadcast frame plus 4014 in the first half and plus 26920 in the second. At those offsets 80% and
 78% of the frames on which both balls are visible agree within 3 m, and the median distance between
 the two balls is 0.8 m. The best offset in every 3-minute window except one lies within 3 frames of
-the half's offset. The best share more than 50 frames away is under 9%, so the
-alignment is not ambiguous. Replays and cut-aways lower the share but do not move the offset.
+the half's offset. The best share more than 50 frames away is under 9%, so the alignment is not
+ambiguous. Replays and cut-aways lower the share but do not move the offset.
 Team slots follow the same convention as the tactical metadata, and the keeper repair above is
 applied to the broadcast players too.
 
