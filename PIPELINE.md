@@ -44,11 +44,13 @@ pipeline on purpose, regenerate the file and update that hash in the same commit
 | `baseline_smooth50` (published floor) | 0.326 | 0.621 | 26 |
 | `baseline_smooth125` | 0.424 | 0.581 | 16 |
 
-Full match: 259 possessions (median 8.4 s), 117 stoppages, 49.4% of graded time dead, 82.6%
+Full match: 239 possessions (median 9.3 s), 117 stoppages, 49.4% of graded time dead, 83.4%
 agreement with the Smart Tagging possession phases, 58 of 62 set pieces and goals followed by a
-restart. Submission sha256 `df2f5e7768aa…` (`tests/expected_sha256.txt`). The broadcast veto
+restart. Submission sha256 `aaf603624211…` (`tests/expected_sha256.txt`). The broadcast veto
 added on 12 Nov changes no public frame; against the 4 Nov file it moves 1,071 graded frames,
-possessions 274 to 259, phase agreement 81.8% to 82.6%. The 22 Oct bootstrap band on public
+possessions 274 to 259, phase agreement 81.8% to 82.6%. The short-spell rule added on 16 Nov
+(`decoder.BLIP_FRAMES`, chosen on hand-reviewed transitions) changes no public frame and moves 554
+graded frames, possessions 259 to 239, phase agreement 82.6% to 83.4%. The 22 Oct bootstrap band on public
 spellF1 was 0.35 to 0.67; one possession in the window is worth about 0.06.
 
 **Public numbers check the pipeline, they do not rank versions of it.** None of the constants were
@@ -70,7 +72,7 @@ Robustness on the 22 Oct file, before the touch latch ([analysis/sensitivity.md]
 
 ## What is left, in order of expected value
 
-**Read [ROADMAP.md](ROADMAP.md) first.** No hand labels exist and none will come, so every item
+**Read [ROADMAP.md](ROADMAP.md) first.** Hand-reviewed transitions now exist (`validation/`, TECHNICAL.md), but every item
 that waited for the E1 transition labels or the gap review (E5 step 2, E6 retry, E7, the slope
 constants) stays as it is.
 

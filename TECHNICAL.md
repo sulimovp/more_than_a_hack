@@ -55,6 +55,12 @@ The chain forces a live spell to last at least 8 frames (0.3 s) and a stoppage a
 Frames outside the two graded blocks are left as no answer. Frames 110808 to 113741, the graded
 portion of the second half before its kickoff, are dead.
 
+After the decode, a team spell shorter than 3 s that has the other team on both sides, with no
+stoppage in between, is given back to that team. It is the possession-level form of the 2 s
+first-controlled-action rule for touches: a brief spell inside the other team's possession is almost
+always a block or an uncontrolled touch. The threshold was chosen on the hand-reviewed transitions
+(validation section). On this match it changes 10 spells and 554 graded frames and no public frame.
+
 ## Possession rules
 
 The ball stays with the last team through a loose ball, a flight, and a deflection. A change
@@ -122,7 +128,9 @@ The broadcast video, its audio and its homography are not used. The zone codes i
 with the true team about half the time. Defending-phase tags name the defending team and are
 inverted when they are used as a check.
 
-No hand label enters the file. The public five minutes are a set of cases, not a training set.
+No hand label enters the file as a label. One threshold, the length of the short spells given back
+to the surrounding team, was chosen on hand-reviewed transitions, which the rules allow for
+validation. The public five minutes are a set of cases, not a training set.
 
 ## What the public window shows
 
@@ -142,8 +150,8 @@ miss the automatic tracking puts a player of the other team nearest the ball on 
 anyone is within 2.5 m of it. Holding the last team, which is the right rule for a
 loose ball, keeps the previous team when the tracking never shows the new one at the ball.
 
-Over the full match the file has 259 possessions, median length 8.4 s, the ball dead for 49.4% of
-graded time, a restart after 58 of 62 set pieces and goals, and 82.6% agreement with the Smart
+Over the full match the file has 239 possessions, median length 9.3 s, the ball dead for 49.4% of
+graded time, a restart after 58 of 62 set pieces and goals, and 83.4% agreement with the Smart
 Tagging phase tags on live frames. None of these is the score. The full-match ground truth is
 private. A spellF1 gap below about 0.04 on a full match is noise, and the public window is
 noisier than that: its bootstrap band on an earlier file was roughly 0.35 to 0.67.
@@ -155,7 +163,8 @@ predicted transitions on video after it was submitted. Each transition was shown
 clip, the broadcast picture next to the tactical picture with the tracking drawn on it, and
 answered with one of: a change of that kind happens within one second of the prediction, it happens
 at another moment, nothing of the kind happens, a different change happens, or cannot tell. The
-answers are used to measure the file and to test variants of it. None of them enters the file.
+answers are used to measure the file and to test variants of it. None of them enters the file as a
+label; they chose one threshold, described below.
 
 The reviewer's reading was checked first on the 15 predicted transitions inside the public window,
 whose official answers are known. The two agree on 14. On the fifteenth the official labels give
@@ -191,7 +200,7 @@ the control evidence gain, the contact distance and the walking-speed pivot of t
 Of the 90 real transitions the submitted file keeps and the 68 invented ones, the best variant
 removed 11 invented and lost 7 real ones while the public spellF1 fell from 0.607 to 0.552; the
 best that left the public window unchanged removed 9 and lost 7, with one set piece fewer followed
-by a restart. None was clearly better than the submitted file, so the file was left unchanged. A
+by a restart. None was clearly better than the file before them, so none of these settings was changed. A
 small logistic regression on the pipeline's own signals at each transition (spell lengths, posterior,
 ball visibility and speed, distance of the new team to the ball, liveness, player speed, whistle,
 team evidence) separates real from invented transitions only weakly, with a cross-validated AUC of
@@ -201,6 +210,23 @@ out of the pitch or a set-piece tag nearby is real in 24 of 28 reviewed cases, o
 13 of 25. The tracking features at the touch itself (relative speed, distance, hold length) carry
 almost no signal on the reviewed switches, so telling a controlled touch from a block needs evidence
 the tracking does not have.
+
+The one pattern the review did isolate is a short team spell inside the other team's possession.
+The file had ten such spells shorter than 3 s. All 20 of their edges were reviewed: 17 were answered "no",
+2 "real" and 1 "at another moment", and every one of the ten spells has a "no" on its opening edge or
+on both. Giving them back to the surrounding team removes 17 of the 80 reviewed invented transitions
+and loses 2 of the 113 real ones, changes no public frame, keeps the set pieces at 58 of 62 and raises
+phase-tag agreement from 82.6% to 83.4%. Spells of 3 to 5 s were mixed (one real, two invented, one
+unclear), and the one reviewed spell of exactly 3.0 s was real, so the threshold stops below 3 s.
+
+This choice has a known weakness, and we report it as found. The ground truth itself contains short
+spells: the public window has a 0.8 s and a 1.3 s home spell inside away possession, which the file
+misses. Shown those four transitions without being told, the reviewer accepted one and rejected three.
+The official labels credit a team for a tackle until the next kick and for a single poke that wins
+the ball; a human reviewer tends not to. So some of the spells the rule removes may be possessions
+by the official convention, and the expected effect, a few hundredths of spellF1 either way, is not
+established by the review. We kept the rule because on the reviewed evidence it removes nine
+invented transitions for every real one it loses, and because it does not touch the public window.
 
 ## Limitations
 

@@ -42,7 +42,7 @@ FPS = 25
 
 # A team spell of at most BLIP_FRAMES with the other team on both sides (H A H or A H A, no stoppage) is
 # given back to that team. Chosen on the hand-reviewed transitions (TECHNICAL.md, validation); None is off.
-BLIP_FRAMES = None
+BLIP_FRAMES = 74         # shorter than 3 s; 75 would take the one reviewed real 3.0 s spell (frame 128264)
 
 
 def _emissions(alive, team, force_dead, normalise_team):
