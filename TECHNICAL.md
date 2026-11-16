@@ -168,17 +168,22 @@ Over 168 reviewed transitions outside the public window (skips left out), the sh
 
 | predicted change | reviewed | within 1 s | at any moment in the clip |
 |---|---|---|---|
-| team switch | 69 | 35% | 45% |
+| team switch | 69 | 38% | 45% |
 | ball goes dead | 49 | 57% | 67% |
 | restart | 50 | 50% | 62% |
-| all | 168 | 46% | 57% |
+| all | 168 | 47% | 57% |
 
-In the public window the same file has 13 of 15 transitions right. The public window is an easy
-stretch of this match, and the full-match score is likely to be well below the public one. Most of
-the wrong transitions are invented rather than late. A block, an uncontrolled touch or a goalkeeper
-catching the ball reads as a clean touch or a stoppage in the tracking, and a pass that hands the
-ball to the other team during a stoppage reads as live play. Where a real team switch was found at
-another moment, it came 2 to 3 s before the predicted one in every case.
+These figures are precision only, from one reviewer, with a 95% interval of about 8 points
+overall and 11 to 18 points per kind of switch. They say nothing about real changes the file misses.
+In the public window 13 of the 15 predicted transitions are real, so the public window looks like an
+easier stretch than the rest of the match, and the full-match score may well be lower than the
+public one; without a recall measurement this is not shown. A "no" covers both an invented change
+and a real one more than 3 s away, outside the clip: in the public window two of the three team
+switches answered "no" are real switches 4.6 s and 2.3 s earlier. The invented ones the reviewer
+described are a block, an uncontrolled touch or a goalkeeper catch read as a touch or a stoppage, and
+a pass that hands the ball over during a stoppage read as live play. Real team switches found at
+another moment lay 2 to 3 s before the prediction in six of eight cases, but the clip reaches only
+3 s back, so that range is partly its edge.
 
 The answers were then used to test whether any of the uncalibrated settings removes invented
 transitions without losing real ones: the team-switch cost, the live-to-dead and dead-to-live costs,
@@ -190,8 +195,12 @@ by a restart. None was clearly better than the submitted file, so the file was l
 small logistic regression on the pipeline's own signals at each transition (spell lengths, posterior,
 ball visibility and speed, distance of the new team to the ball, liveness, player speed, whistle,
 team evidence) separates real from invented transitions only weakly, with a cross-validated AUC of
-0.68 overall and 0.59 for team switches. The invented transitions are confident, not borderline, so
-removing them needs new evidence rather than new thresholds.
+0.68 overall and 0.59 for team switches; with fifteen features on 62 switches that last figure is
+mostly variance. Context the regression did not see separates better. A predicted stop with the ball
+out of the pitch or a set-piece tag nearby is real in 24 of 28 reviewed cases, one without either in
+13 of 25. The tracking features at the touch itself (relative speed, distance, hold length) carry
+almost no signal on the reviewed switches, so telling a controlled touch from a block needs evidence
+the tracking does not have.
 
 ## Limitations
 

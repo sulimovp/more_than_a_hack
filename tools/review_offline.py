@@ -54,14 +54,15 @@ def encode(path, images):
             out.mux(packet)
 
 
-def build(name, batch):
-    queue = pending_queue(name)
+def build(name, batch, queue=None, label=None):
+    """Batches of the pending queue, or of an explicit [(frame, transition)] queue written as <name>_<label>."""
+    queue = pending_queue(name) if queue is None else queue
     clips = Clips(queue)
     template = open(os.path.join(HERE, "review_offline.html"), encoding="utf-8").read()
     n_batches = (len(queue) + batch - 1) // batch
     print("{} clips to review, {} batches of up to {}".format(len(queue), n_batches, batch), flush=True)
     for b in range(n_batches):
-        folder = os.path.join(OUT_DIR, "{}_part{}".format(name, b + 1))
+        folder = os.path.join(OUT_DIR, "{}_{}{}".format(name, label or "part", "" if label else b + 1))
         os.makedirs(os.path.join(folder, "clips"), exist_ok=True)
         items = []
         for i in range(b * batch, min((b + 1) * batch, len(queue))):
@@ -104,9 +105,14 @@ def main():
     parser.add_argument("--name", required=True)
     parser.add_argument("--batch", type=int, default=40)
     parser.add_argument("--merge", help="text file with the lines copied from the offline page")
+    parser.add_argument("--clips", help="explicit list instead of the pending queue: frame:transition,... (e.g. 28940:H>A)")
+    parser.add_argument("--label", default="check", help="folder suffix for --clips")
     args = parser.parse_args()
     if args.merge:
         merge(args.name, args.merge)
+    elif args.clips:
+        queue = [(int(c.split(":")[0]), c.split(":")[1]) for c in args.clips.split(",")]
+        build(args.name, len(queue), queue, args.label)
     else:
         build(args.name, args.batch)
 

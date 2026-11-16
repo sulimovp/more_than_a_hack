@@ -333,3 +333,15 @@ def test_liveness_model_modes_and_default_off():
     assert laws[2] == liveness.OOB_LOGODDS
     assert np.allclose(livemodel.combine(live, p, "add", b)["logodds_alive"], 1.0 + np.log(9.0))
     assert pipeline.LIVENESS_MODEL is None                     # the submission uses the rule-based S2
+
+
+def test_absorb_blips_only_sandwiched_team_spells():
+    H, A, D = 0, 1, 2
+    codes = np.array([H] * 10 + [A] * 3 + [H] * 10 + [A] * 3 + [D] * 5 + [A] * 3 + [H] * 4 + [A] * 6 + [H] * 2, dtype=np.int8)
+    out = decoder.absorb_blips(codes, 3)
+    assert (out[:23] == H).all()                       # H A H: the 3-frame A spell goes back to H
+    assert (out[23:26] == A).all()                     # A next to a stoppage stays
+    assert (out[26:31] == D).all() and (out[31:34] == A).all()
+    assert (out[34:38] == H).all()                     # 4 frames: longer than the limit, stays
+    assert (out[38:44] == A).all() and (out[44:] == H).all()   # block edge: no spell after it, stays
+    assert (decoder.absorb_blips(codes, 2) == codes).all()     # nothing at most 2 frames long

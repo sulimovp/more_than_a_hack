@@ -92,4 +92,6 @@ def run(use_shape=True, min_risk=None, **decoder_params):
         codes = decode(f, add_shape(f, codes), min_risk=threshold, **decoder_params)
     elif threshold is not None:
         codes = decode(f, min_risk=threshold, **decoder_params)
+    if decoder.BLIP_FRAMES:
+        codes = decoder.absorb_blips(codes, decoder.BLIP_FRAMES)
     return codes

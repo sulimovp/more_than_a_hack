@@ -85,10 +85,15 @@ class Clips:
 
     def composite(self, i, size=(W, H_PX)):
         """(lo, hi, mark, [broadcast | tactical-with-tracking image per frame]) for queue item i."""
-        cv2 = self.cv2
-        w, h = size
         mark, _ = self.queue[i]
         lo, hi = max(mark - CONTEXT, 0), min(mark + CONTEXT, io.N_FRAMES)
+        return lo, hi, mark, self.composite_range(lo, hi, size, mark)
+
+    def composite_range(self, lo, hi, size=(W, H_PX), mark=None):
+        """[broadcast | tactical-with-tracking image] for frames lo..hi-1; mark picks the half's offset."""
+        cv2 = self.cv2
+        w, h = size
+        mark = lo if mark is None else mark
         tac = self._read(self.tac, lo, hi - lo)
         off = self.half_offset(mark)
         bro = self._read(self.bro, lo - off, hi - lo) if off is not None else [None] * (hi - lo)
@@ -102,7 +107,7 @@ class Clips:
             else:
                 right = np.zeros((h, w, 3), np.uint8)
             images.append(np.hstack([left, right]))
-        return lo, hi, mark, images
+        return images
 
     def render(self, i):
         clip = self.cache.get(i)          # served without the lock, so a prefetch never blocks playback

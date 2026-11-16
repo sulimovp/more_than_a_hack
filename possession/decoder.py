@@ -40,6 +40,10 @@ P_REAL = (0.0, 1.0, 0.0)
 MIN_RISK_MERGE = "previous"
 FPS = 25
 
+# A team spell of at most BLIP_FRAMES with the other team on both sides (H A H or A H A, no stoppage) is
+# given back to that team. Chosen on the hand-reviewed transitions (TECHNICAL.md, validation); None is off.
+BLIP_FRAMES = None
+
 
 def _emissions(alive, team, force_dead, normalise_team):
     """(e_h, e_a, e_d) log-emissions per frame, shared by viterbi() and posteriors()."""
@@ -280,4 +284,17 @@ def remove_uncertain_spells(codes, post, threshold, coef=None, merge=None,
     for a, z, c in segs[1:-1]:
         if z - a < (min_dead if c == 2 else min_live):
             raise AssertionError("run {}-{} of {} is under its minimum duration".format(a, z, c))
+    return out
+
+
+def absorb_blips(codes, max_frames):
+    """Codes with every team spell of at most max_frames that sits between two spells of the other team
+    relabelled as that team. One pass over the original runs; dead spells and block edges are untouched."""
+    out = np.array(codes, copy=True)
+    r = runs(codes)
+    for k in range(1, len(r) - 1):
+        start, stop, code = r[k]
+        before, after = r[k - 1][2], r[k + 1][2]
+        if code in (0, 1) and before == after and before in (0, 1) and before != code and stop - start <= max_frames:
+            out[start:stop] = before
     return out
