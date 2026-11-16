@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Transition review</title>
+<style>
+  :root { --bg:#14161a; --panel:#1f2329; --text:#e8eaed; --muted:#9aa0a6; --accent:#ff9f1a; --ok:#2e7d32; --no:#b3261e; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.4 system-ui, sans-serif; }
+  main { max-width:1640px; margin:0 auto; padding:12px 16px; }
+  header { display:flex; justify-content:space-between; align-items:baseline; gap:16px; flex-wrap:wrap; }
+  h1 { font-size:22px; margin:4px 0; }
+  .muted { color:var(--muted); }
+  #progress { height:6px; background:#333; border-radius:3px; margin:6px 0 10px; }
+  #progress div { height:100%; background:var(--accent); border-radius:3px; width:0; }
+  .views { display:grid; grid-template-columns:1fr 1fr; gap:4px; font-size:12px; color:var(--muted); }
+  canvas { width:100%; display:block; background:#000; border-radius:4px; cursor:pointer; }
+  #timeline { position:relative; height:34px; background:#2a2f36; border-radius:4px; margin-top:6px; cursor:pointer; }
+  #win { position:absolute; top:0; bottom:0; background:rgba(255,159,26,.18); }
+  #markline { position:absolute; top:0; bottom:0; width:4px; background:var(--accent); }
+  #head { position:absolute; top:-3px; bottom:-3px; width:3px; background:#fff; }
+  #pick { position:absolute; top:0; bottom:0; width:3px; background:#4fc3f7; display:none; }
+  #tlabel { display:flex; justify-content:space-between; font-size:12px; color:var(--muted); }
+  .controls { display:flex; gap:8px; align-items:center; margin:8px 0; flex-wrap:wrap; }
+  button { font:inherit; color:var(--text); background:var(--panel); border:1px solid #3a3f47; border-radius:6px; padding:7px 12px; cursor:pointer; }
+  button:hover { border-color:#777; }
+  .answers { display:grid; grid-template-columns:repeat(5, 1fr); gap:8px; margin-top:6px; }
+  .answers button { text-align:left; padding:10px 12px; min-height:74px; }
+  .answers b { display:block; font-size:15px; margin-bottom:3px; }
+  .answers span { color:var(--muted); font-size:13px; }
+  .answers button.yes { border-color:var(--ok); }
+  .answers button.no { border-color:var(--no); }
+  .answers button.chosen { outline:3px solid var(--accent); }
+  .answers button:disabled { opacity:.45; cursor:default; }
+  .key { float:right; color:var(--muted); font-size:12px; border:1px solid #555; border-radius:3px; padding:0 5px; }
+  details { margin-top:10px; background:var(--panel); border-radius:6px; padding:8px 12px; }
+  details li { margin:3px 0; }
+  #loading { color:var(--accent); }
+  @media (max-width:1100px){ .answers{ grid-template-columns:1fr 1fr; } .views{ grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1 id="title">Loading…</h1>
+      <div id="detail" class="muted"></div>
+    </div>
+    <div class="muted"><span id="count"></span> <span id="loading"></span></div>
+  </header>
+  <div id="progress"><div></div></div>
+
+  <div class="views"><div>TV broadcast (may show a replay). Barcelona in dark blue-red shirts, Athletic in white</div><div>Tactical camera, tracking drawn on: <span style="color:#00ffff">Barcelona cyan</span>, <span style="color:#ff00ff">Athletic magenta</span>, ball yellow</div></div>
+  <canvas id="cv" width="1600" height="450" title="click: play / pause"></canvas>
+  <div id="timeline"><div id="win"></div><div id="markline"></div><div id="pick"></div><div id="head"></div></div>
+  <div id="tlabel"><span>-3 s</span><span id="tnow">0.0 s</span><span>+3 s</span></div>
+
+  <div class="controls">
+    <button id="play">Pause</button>
+    <button id="slow">Speed 1x</button>
+    <button id="stepb">◀ frame</button><button id="stepf">frame ▶</button>
+    <button id="tomark">Jump to orange line</button>
+    <span class="muted">Space: pause · ←/→: step a frame · B: previous clip</span>
+    <span style="flex:1"></span>
+    <button id="back">◀ Previous clip</button>
+  </div>
+
+  <div class="answers">
+    <button class="yes" data-a="Y"><span class="key">1</span><b>Yes, here</b><span>It happens within about 1 s of the orange line.</span></button>
+    <button data-a="E"><span class="key">2</span><b>Yes, but at another moment</b><span>Pause on the frame where it really happens, then click this.</span></button>
+    <button class="no" data-a="N"><span class="key">3</span><b>No</b><span>Nothing of the kind happens here; the same situation goes on.</span></button>
+    <button data-a="T"><span class="key">4</span><b id="otherTitle">Something else changes</b><span id="other"></span></button>
+    <button data-a="S"><span class="key">5</span><b>Can't tell</b><span>Skip. Better than guessing.</span></button>
+  </div>
+
+  <details>
+    <summary>How the official labels count possession (read once)</summary>
+    <ul>
+      <li>A team gets the ball with its first <b>controlled</b> action: a pass, a dribble that keeps the ball, a trap. A block, a deflection, a header that just clears, or a tackle that loses the ball again at once does <b>not</b> change possession.</li>
+      <li>A loose ball and a ball in flight still belong to the team that last controlled it.</li>
+      <li>Play is <b>dead</b> from the moment the ball leaves the pitch or the referee stops play, until the restart is taken (the throw, the kick). Who restarts it is the team in possession from that moment.</li>
+      <li>The orange line is when our system thinks the change happens. "Yes, here" means within about 1 second of it. If the real moment is further away, pause there and use button 2.</li>
+      <li>The broadcast picture sometimes shows a replay or a close-up of something else; trust the tactical view then.</li>
+    </ul>
+  </details>
+</main>
+<script>
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+let item = null, imgs = [], cur = 0, playing = true, speed = 1, timer = null, busy = false;
+
+const $ = id => document.getElementById(id);
+function pct(f){ return (f - item.lo) / (item.hi - item.lo) * 100; }
+
+async function load(i){
+  busy = true; setButtons(false);
+  $('loading').textContent = 'loading clip…';
+  item = await (await fetch('/item/' + i)).json();
+  imgs = [];
+  const n = item.hi - item.lo;
+  await Promise.all([...Array(n).keys()].map(k => new Promise(res => {
+    const im = new Image(); im.onload = im.onerror = res; im.src = `/frame/${i}/${k}`; imgs[k] = im;
+  })));
+  $('loading').textContent = '';
+  $('title').textContent = item.title;
+  $('detail').textContent = item.detail;
+  $('other').textContent = item.other;
+  $('count').textContent = `clip ${item.i + 1} of ${item.n}`;
+  $('win').style.left = pct(item.mark - item.fps) + '%';
+  $('win').style.width = (2 * item.fps / (item.hi - item.lo) * 100) + '%';
+  $('markline').style.left = pct(item.mark) + '%';
+  document.querySelectorAll('.answers button').forEach(b => b.classList.toggle('chosen', b.dataset.a === item.answer));
+  if (item.answer === 'E' && item.true_frame != null){ $('pick').style.display = 'block'; $('pick').style.left = pct(item.true_frame) + '%'; }
+  else $('pick').style.display = 'none';
+  cur = 0; playing = true; $('play').textContent = 'Pause';
+  busy = false; setButtons(true); draw(); schedule();
+}
+
+async function refreshProgress(){
+  const s = await (await fetch('/state')).json();
+  $('progress').firstElementChild.style.width = (s.done / s.n * 100) + '%';
+  return s;
+}
+
+function setButtons(on){ document.querySelectorAll('.answers button').forEach(b => b.disabled = !on); }
+
+function draw(){
+  const im = imgs[cur];
+  if (im && im.complete && im.naturalWidth) ctx.drawImage(im, 0, 0, cv.width, cv.height);
+  $('head').style.left = pct(item.lo + cur) + '%';
+  $('tnow').textContent = ((item.lo + cur - item.mark) / item.fps).toFixed(1) + ' s';
+}
+
+function schedule(){
+  clearTimeout(timer);
+  if (!playing) return;
+  timer = setTimeout(() => { cur = (cur + 1) % imgs.length; draw(); schedule(); }, 1000 / (item.fps * speed));
+}
+
+function togglePlay(){ playing = !playing; $('play').textContent = playing ? 'Pause' : 'Play'; schedule(); }
+function step(d){ playing = false; $('play').textContent = 'Play'; clearTimeout(timer); cur = Math.min(Math.max(cur + d, 0), imgs.length - 1); draw(); }
+
+async function answer(a){
+  if (busy || !item) return;
+  if (a === 'E' && playing){ alert('Pause on the frame where it really happens first (Space, then ←/→), then press this again.'); return; }
+  busy = true;
+  await fetch('/answer', {method:'POST', body: JSON.stringify({i: item.i, answer: a, frame: item.lo + cur})});
+  const s = await refreshProgress();
+  const next = s.next;              // always the first unanswered clip, also after revisiting an old one
+  if (next == null){ $('title').textContent = 'All clips answered. Thank you!'; busy = false; return; }
+  await load(next);
+}
+
+document.querySelectorAll('.answers button').forEach(b => b.onclick = () => answer(b.dataset.a));
+$('play').onclick = togglePlay; cv.onclick = togglePlay;
+$('stepb').onclick = () => step(-1); $('stepf').onclick = () => step(1);
+$('tomark').onclick = () => { cur = item.mark - item.lo; step(0); };
+$('slow').onclick = () => { speed = speed === 1 ? 0.5 : speed === 0.5 ? 0.25 : 1; $('slow').textContent = 'Speed ' + speed + 'x'; schedule(); };
+$('back').onclick = () => { if (item && item.i > 0) load(item.i - 1); };
+$('timeline').onclick = e => { const r = e.currentTarget.getBoundingClientRect(); cur = Math.round((e.clientX - r.left) / r.width * (imgs.length - 1)); step(0); };
+document.addEventListener('keydown', e => {
+  if (e.key === ' '){ e.preventDefault(); togglePlay(); }
+  else if (e.key === 'ArrowLeft') step(-1);
+  else if (e.key === 'ArrowRight') step(1);
+  else if (e.key === 'b' || e.key === 'B') $('back').click();
+  else if ('12345'.includes(e.key) && e.key.length === 1) answer('YENTS'['12345'.indexOf(e.key)]);
+});
+
+(async () => { const s = await refreshProgress(); await load(s.next == null ? 0 : s.next); })();
+</script>
+</body>
+</html>

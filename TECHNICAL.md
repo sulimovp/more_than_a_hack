@@ -148,6 +148,51 @@ Tagging phase tags on live frames. None of these is the score. The full-match gr
 private. A spellF1 gap below about 0.04 on a full match is noise, and the public window is
 noisier than that: its bootstrap band on an earlier file was roughly 0.35 to 0.67.
 
+## Validation on hand-reviewed transitions
+
+Outside the public five minutes there is no ground truth, so one of us reviewed the file's own
+predicted transitions on video after it was submitted. Each transition was shown as a six-second
+clip, the broadcast picture next to the tactical picture with the tracking drawn on it, and
+answered with one of: a change of that kind happens within one second of the prediction, it happens
+at another moment, nothing of the kind happens, a different change happens, or cannot tell. The
+answers are used to measure the file and to test variants of it. None of them enters the file.
+
+The reviewer's reading was checked first on the 15 predicted transitions inside the public window,
+whose official answers are known. The two agree on 14. On the fifteenth the official labels give
+the possession to the new team 2.3 s before the predicted moment and the reviewer saw no change.
+In two more cases the reviewer accepted a change that the official labels place 1.4 s and 1.6 s
+away, just outside the one-second tolerance, so the reviewer is, if anything, slightly lenient on
+timing.
+
+Over 168 reviewed transitions outside the public window (skips left out), the share that is real is:
+
+| predicted change | reviewed | within 1 s | at any moment in the clip |
+|---|---|---|---|
+| team switch | 69 | 35% | 45% |
+| ball goes dead | 49 | 57% | 67% |
+| restart | 50 | 50% | 62% |
+| all | 168 | 46% | 57% |
+
+In the public window the same file has 13 of 15 transitions right. The public window is an easy
+stretch of this match, and the full-match score is likely to be well below the public one. Most of
+the wrong transitions are invented rather than late. A block, an uncontrolled touch or a goalkeeper
+catching the ball reads as a clean touch or a stoppage in the tracking, and a pass that hands the
+ball to the other team during a stoppage reads as live play. Where a real team switch was found at
+another moment, it came 2 to 3 s before the predicted one in every case.
+
+The answers were then used to test whether any of the uncalibrated settings removes invented
+transitions without losing real ones: the team-switch cost, the live-to-dead and dead-to-live costs,
+the control evidence gain, the contact distance and the walking-speed pivot of the liveness rule.
+Of the 90 real transitions the submitted file keeps and the 68 invented ones, the best variant
+removed 11 invented and lost 7 real ones while the public spellF1 fell from 0.607 to 0.552; the
+best that left the public window unchanged removed 9 and lost 7, with one set piece fewer followed
+by a restart. None was clearly better than the submitted file, so the file was left unchanged. A
+small logistic regression on the pipeline's own signals at each transition (spell lengths, posterior,
+ball visibility and speed, distance of the new team to the ball, liveness, player speed, whistle,
+team evidence) separates real from invented transitions only weakly, with a cross-validated AUC of
+0.68 overall and 0.59 for team switches. The invented transitions are confident, not borderline, so
+removing them needs new evidence rather than new thresholds.
+
 ## Limitations
 
 The control signal cannot recover a possession the tracking does not show. Short duels and blocked
@@ -171,15 +216,19 @@ where those rules say nothing.
 
 The decoder can also give per-frame posterior probabilities by forward-backward on the same chain,
 and a minimum-risk step can remove a predicted possession whose probability of being real is low.
-Both are built and the removal is off. On an earlier file the posteriors were overconfident (the
-median predicted possession averaged 0.995 on its own label, and the one false possession in the
-public window 0.997), so the removal needs a calibration from labelled transitions, and there are
-none.
+Both are built and the removal is off. The posteriors are overconfident (the median predicted
+possession averages 0.995 on its own label, and the one false possession in the public window
+0.997). Fitted on the reviewed transitions, the probability that a possession is real does not
+depend on its posterior at all, so the removal stays off.
 
-There is no hand-labelled sample beyond the public five minutes, so the transition costs and the
-speed thresholds have not been calibrated. They are physical values, and the sensitivity of an
-earlier file is in `analysis/sensitivity.md`. Moving them to chase the public window is how the
-published baselines pick the wrong smoothing width.
+The transition costs and the speed thresholds are physical values, not fitted. The reviewed
+transitions show that moving them trades real transitions for invented ones at about the same rate
+(previous section), and the sensitivity of an earlier file is in `analysis/sensitivity.md`. Moving
+them to chase the public window is how the published baselines pick the wrong smoothing width.
+
+What we would fix with more time follows from the review: a touch detector that tells a controlled
+touch from a block or a deflection, stoppage detection that recognises a ball handed over at walking
+pace, and a liveness model trained on reviewed frames rather than on its own rules.
 
 ## Reproduction
 
@@ -194,3 +243,7 @@ and its metadata. The command rewrites the CSV from that bundle. CPU only, deter
 `python -m pytest tests -q` checks the decoder, the broadcast offsets and that a fresh run matches
 `tests/expected_sha256.txt`. Caches under `data/cache/` are derived match data and are not part of
 the repository.
+
+The reviewed transitions are in `validation/`. Copied to `data/labels/`, they rerun the variant test
+(`python -m analysis.label_sweep`) and the classifier (`python -m analysis.transition_classifier`).
+`python tools/review_web.py --name <name>` opens the review in a local browser.
