@@ -3,8 +3,8 @@
 Team Arraxis: Pavel Sulimov, Sergey Eremeykin, Daniil Sulimov.  
 Code: <https://github.com/sulimovp/more_than_a_hack>
 
-Method note for More than a Hack 2027, phase 1. The ranked file is one label per tactical
-frame. This note is the description that goes with it.
+This note describes how we produced the ranked file for More than a Hack 2027, phase 1, which
+gives one possession label per tactical frame.
 
 ## Approach
 
@@ -21,7 +21,7 @@ opponent's box in open play, so a position there is a tracking error.
 
 Four per-frame signals are combined by Viterbi:
 
-- **Liveness.** Log-odds that the ball is in play. Inside a long tracking gap the decision is the
+- Liveness is the log-odds that the ball is in play. Inside a long tracking gap the decision is the
   players' median speed, because on this match the tracker withholds the ball for most of a
   stoppage and the players walk. With the ball visible, the same speed is a weak signal, and a
   moving ball adds a capped bonus so that a pass is not called dead when the players have slowed
@@ -29,21 +29,21 @@ Four per-frame signals are combined by Viterbi:
   Out-of-pitch frames, and the stretch from the ball leaving the pitch until it is struck back
   into play, are dead. Whistles from the tactical audio (narrow band, 2.5 to 4.5 kHz) add a bonus
   on the live-to-dead transition. They do not decide a frame by themselves.
-- **Control.** Who last had the ball, as log-odds of home against away. A player inside 1.5 m
+- Control says which team last had the ball, as log-odds of home against away. A player inside 1.5 m
   contributes exp(−d / 0.7 m). If both teams are in that zone the score shrinks to a nudge
   toward the nearer one. A touch sets that team, and the assignment is held until the next
   touch; that hold is what carries a pass. A touch is a peak in ball acceleration above
   20 m/s², a clear change of direction, or the ball staying at a player's feet, with a player
   within 1.5 m. Relative speed above 8 m/s is treated as a deflection and is not a touch. While
   the ball is faster than 8 m/s and nobody is within 2 m, the zone contributes nothing.
-- **Restarts.** At a dead-to-live transition the restarting team is taken from the laws and from
+- Restarts name the team that takes the ball back into play. At a dead-to-live transition the restarting team is taken from the laws and from
   Smart Tagging: the first-half kickoff, the opposite team after the break and after a goal, the
   tagged team for a corner, goal kick or free kick, and otherwise the player standing over the
   still ball in the seconds before it is struck, or failing that the player nearest the ball when
   it is struck. Every throw-in is tagged without a team, so those fall through to the taker. The
   first-half kickoff team, Athletic, is a fixed fact about this match read from the video; it is
   not inferred from the data.
-- **Team shape.** Where the ball is missing during a live phase, a gradient-boosted model gives a
+- Team shape covers the frames where the ball is missing during a live phase. There a gradient-boosted model gives a
   weak team score from the two teams' positions and velocities, oriented by attack direction. It is
   trained on frames where a player is at the ball, each half predicted by a model fit on the other
   half, and its probability is rounded to 0.02 so that a last-bit difference between machines
@@ -64,10 +64,10 @@ always a block or an uncontrolled touch. The threshold was chosen on the hand-re
 ## Possession rules
 
 The ball stays with the last team through a loose ball, a flight, and a deflection. A change
-requires a touch or a player staying with the ball, not a single nearer frame. The ground truth
-moves possession on the new team's first controlled action, so a touch counts only if the other
-team does not touch the ball within the next 2 s; a block, a deflection or a lost challenge is
-dropped before it reaches the hold. One exception concerns the ball reappearing: when it is
+requires a touch or a player staying with the ball; one frame in which the other team is nearer
+is not enough. The ground truth moves possession on the new team's first controlled action. A
+touch therefore counts only if the other team does not touch the ball within the next 2 s, and a block, a deflection or a lost challenge is
+dropped before it reaches the hold. The one exception is a ball that reappears. When it is
 seen again after at least three missing frames with a player within 0.5 m, that frame is a
 touch by that player whatever the relative speed, because the ball is often first detected as it
 leaves the kicker's foot.
@@ -110,8 +110,8 @@ trusted on such a frame, which is why a disagreement only removes a touch and do
 the other team.
 
 Several stronger uses were tried and dropped. A liveness score learned from the broadcast alone
-separated live from dead play well, but adding it to the liveness moved public stoppage edges:
-replays run into restarts and the wide shot often returns before a free kick is taken, so a
+separated live from dead play well. Adding it to the liveness, however, moved public stoppage
+edges, because replays run into restarts and the wide shot often returns before a free kick is taken, so a
 stoppage ended seconds early or late. Computing the control signal on the broadcast and averaging
 or adding it to the tactical one lost two public possessions. The last attempt added a broadcast
 player as an extra tactical player wherever the tactical view had no player of that team within
@@ -130,7 +130,7 @@ inverted when they are used as a check.
 
 No hand label enters the file as a label. One threshold, the length of the short spells given back
 to the surrounding team, was chosen on hand-reviewed transitions, which the rules allow for
-validation. The public five minutes are a set of cases, not a training set.
+validation. We looked at the public five minutes case by case and fitted no parameter to them.
 
 ## What the public window shows
 
@@ -152,17 +152,18 @@ loose ball, keeps the previous team when the tracking never shows the new one at
 
 Over the full match the file has 239 possessions, median length 9.3 s, the ball dead for 49.4% of
 graded time, a restart after 58 of 62 set pieces and goals, and 83.4% agreement with the Smart
-Tagging phase tags on live frames. None of these is the score. The full-match ground truth is
-private. A spellF1 gap below about 0.04 on a full match is noise, and the public window is
+Tagging phase tags on live frames. These describe the file but are not the score, because the
+full-match ground truth is private. A spellF1 gap below about 0.04 on a full match is noise, and the public window is
 noisier than that: its bootstrap band on an earlier file was roughly 0.35 to 0.67.
 
 ## Validation on hand-reviewed transitions
 
 Outside the public five minutes there is no ground truth, so one of us reviewed the file's own
-predicted transitions on video after it was submitted. Each transition was shown as a six-second
-clip, the broadcast picture next to the tactical picture with the tracking drawn on it, and
-answered with one of: a change of that kind happens within one second of the prediction, it happens
-at another moment, nothing of the kind happens, a different change happens, or cannot tell. The
+predicted transitions on video. Each transition was shown as a six-second clip, with the broadcast
+picture next to the tactical picture and the tracking drawn on it. The reviewer answered that a
+change of that kind happens within one second of the prediction, that it happens at another
+moment, that nothing of the kind happens, that a different change happens, or that it cannot be
+told. The
 answers are used to measure the file and to test variants of it. None of them enters the file as a
 label; they chose one threshold, described below.
 
@@ -185,8 +186,8 @@ Over 168 reviewed transitions outside the public window (skips left out), the sh
 These figures are precision only, from one reviewer, with a 95% interval of about 8 points
 overall and 11 to 18 points per kind of switch. They say nothing about real changes the file misses.
 In the public window 13 of the 15 predicted transitions are real, so the public window looks like an
-easier stretch than the rest of the match, and the full-match score may well be lower than the
-public one; without a recall measurement this is not shown. A "no" covers both an invented change
+easier stretch than the rest of the match. The full-match score may well be lower than the public
+one, although without a recall measurement this is not shown. A "no" covers both an invented change
 and a real one more than 3 s away, outside the clip: in the public window two of the three team
 switches answered "no" are real switches 4.6 s and 2.3 s earlier. The invented ones the reviewer
 described are a block, an uncontrolled touch or a goalkeeper catch read as a touch or a stoppage, and
@@ -197,15 +198,18 @@ another moment lay 2 to 3 s before the prediction in six of eight cases, but the
 The answers were then used to test whether any of the uncalibrated settings removes invented
 transitions without losing real ones: the team-switch cost, the live-to-dead and dead-to-live costs,
 the control evidence gain, the contact distance and the walking-speed pivot of the liveness rule.
-Of the 90 real transitions the submitted file keeps and the 68 invented ones, the best variant
-removed 11 invented and lost 7 real ones while the public spellF1 fell from 0.607 to 0.552; the
-best that left the public window unchanged removed 9 and lost 7, with one set piece fewer followed
-by a restart. None was clearly better than the file before them, so none of these settings was changed. A
-small logistic regression on the pipeline's own signals at each transition (spell lengths, posterior,
-ball visibility and speed, distance of the new team to the ball, liveness, player speed, whistle,
-team evidence) separates real from invented transitions only weakly, with a cross-validated AUC of
-0.68 overall and 0.59 for team switches; with fifteen features on 62 switches that last figure is
-mostly variance. Context the regression did not see separates better. A predicted stop with the ball
+The file reviewed at that point kept 90 real transitions and 68 invented ones. The best variant
+removed 11 invented and lost 7 real ones, while the public spellF1 fell from 0.607 to 0.552. The
+best variant that left the public window unchanged removed 9 and lost 7, with one set piece fewer
+followed by a restart. Neither was clearly better than the existing settings, so none of them was
+changed.
+
+We also fitted a small logistic regression on the pipeline's own signals at each transition: spell
+lengths, posterior, ball visibility and speed, distance of the new team to the ball, liveness,
+player speed, whistle and team evidence. It separates real from invented transitions only weakly,
+with a cross-validated AUC of 0.68 overall and 0.59 for team switches, and with fifteen features
+on 62 switches that last figure is mostly variance. Context the regression did not see separates
+them better. A predicted stop with the ball
 out of the pitch or a set-piece tag nearby is real in 24 of 28 reviewed cases, one without either in
 13 of 25. The tracking features at the touch itself (relative speed, distance, hold length) carry
 almost no signal on the reviewed switches, so telling a controlled touch from a block needs evidence
@@ -219,8 +223,7 @@ and loses 2 of the 113 real ones, changes no public frame, keeps the set pieces 
 phase-tag agreement from 82.6% to 83.4%. Spells of 3 to 5 s were mixed (one real, two invented, one
 unclear), and the one reviewed spell of exactly 3.0 s was real, so the threshold stops below 3 s.
 
-This choice has a known weakness, and we report it as found. The ground truth itself contains short
-spells: the public window has a 0.8 s and a 1.3 s home spell inside away possession, which the file
+The rule has a weakness, because the ground truth itself contains short spells: the public window has a 0.8 s and a 1.3 s home spell inside away possession, which the file
 misses. Shown those four transitions without being told, the reviewer accepted one and rejected three.
 The official labels credit a team for a tackle until the next kick and for a single poke that wins
 the ball; a human reviewer tends not to. So some of the spells the rule removes may be possessions
@@ -256,14 +259,15 @@ possession averages 0.995 on its own label, and the one false possession in the 
 0.997). Fitted on the reviewed transitions, the probability that a possession is real does not
 depend on its posterior at all, so the removal stays off.
 
-The transition costs and the speed thresholds are physical values, not fitted. The reviewed
+The transition costs and the speed thresholds were set from physical reasoning and were never fitted. The reviewed
 transitions show that moving them trades real transitions for invented ones at about the same rate
 (previous section), and the sensitivity of an earlier file is in `analysis/sensitivity.md`. Moving
 them to chase the public window is how the published baselines pick the wrong smoothing width.
 
-What we would fix with more time follows from the review: a touch detector that tells a controlled
-touch from a block or a deflection, stoppage detection that recognises a ball handed over at walking
-pace, and a liveness model trained on reviewed frames rather than on its own rules.
+With more time we would build what the review points to. The first is a touch detector that tells
+a controlled touch from a block or a deflection. The second is stoppage detection that recognises a
+ball handed over at walking pace, and the third a liveness model trained on reviewed frames instead
+of on its own rules.
 
 ## Reproduction
 
